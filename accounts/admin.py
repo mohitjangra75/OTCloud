@@ -8,9 +8,9 @@ from accounts.models import OTP, User
 class UserAdmin(BaseUserAdmin):
     list_display = (
         'mobile_number', 'first_name', 'last_name', 'role',
-        'is_verified', 'is_active', 'is_staff', 'date_joined',
+        'is_verified', 'is_active', 'date_joined',
     )
-    list_filter = ('role', 'is_verified', 'is_active', 'is_staff')
+    list_filter = ('role', 'is_verified', 'is_active')
     search_fields = ('mobile_number', 'first_name', 'last_name', 'email')
     ordering = ('-date_joined',)
 
@@ -19,7 +19,7 @@ class UserAdmin(BaseUserAdmin):
         (None, {'fields': ('mobile_number', 'password')}),
         ('Personal Info', {'fields': ('first_name', 'last_name', 'email', 'profile_image')}),
         ('Roles & Permissions', {
-            'fields': ('role', 'is_verified', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+            'fields': ('role', 'is_verified', 'is_active', 'is_superuser', 'groups', 'user_permissions'),
         }),
     )
 
