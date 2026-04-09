@@ -2,7 +2,6 @@
 
 {% block extra_css %}
 <style>
-    /* Remove main-content padding for full-bleed auth layout */
     .main-content--full {
         padding: 0 !important;
         margin: 0 !important;
@@ -18,40 +17,51 @@
         padding: 1.5rem;
         position: relative;
         overflow: hidden;
-
-        /* Warm teal-to-slate gradient */
-        background: linear-gradient(145deg, #0f766e 0%, #0d9488 25%, #14b8a6 50%, #5eead4 75%, #ccfbf1 100%);
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 35%, #334155 60%, #1e293b 85%, #0f172a 100%);
     }
 
-    /* Soft radial overlays for depth */
+    /* Animated gradient orbs */
     .auth-wrapper::before {
         content: '';
         position: absolute;
         inset: 0;
         background:
-            radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.18) 0%, transparent 60%),
-            radial-gradient(ellipse at 80% 80%, rgba(15,23,42,0.12) 0%, transparent 50%);
+            radial-gradient(600px circle at 20% 40%, rgba(99,102,241,0.15) 0%, transparent 60%),
+            radial-gradient(500px circle at 75% 70%, rgba(14,165,233,0.12) 0%, transparent 55%),
+            radial-gradient(400px circle at 50% 20%, rgba(168,85,247,0.08) 0%, transparent 50%),
+            radial-gradient(300px circle at 80% 20%, rgba(236,72,153,0.06) 0%, transparent 45%);
         pointer-events: none;
+        animation: orbShift 12s ease-in-out infinite alternate;
     }
 
-    /* Dot texture */
+    @keyframes orbShift {
+        0% { transform: scale(1) translate(0, 0); }
+        100% { transform: scale(1.05) translate(-10px, 8px); }
+    }
+
+    /* Fine grid texture */
     .auth-wrapper::after {
         content: '';
         position: absolute;
         inset: 0;
-        background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0);
-        background-size: 28px 28px;
+        background-image:
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
         pointer-events: none;
     }
 
     .auth-card {
         width: 100%;
         max-width: 420px;
-        background: #ffffff;
-        border-radius: 16px;
+        background: rgba(255,255,255,0.97);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 20px;
         box-shadow:
-            0 20px 60px rgba(0,0,0,0.15),
-            0 4px 16px rgba(0,0,0,0.08);
+            0 25px 50px rgba(0,0,0,0.25),
+            0 0 0 1px rgba(255,255,255,0.1),
+            inset 0 1px 0 rgba(255,255,255,0.8);
         padding: 2.5rem 2rem;
         position: relative;
         z-index: 1;
@@ -59,11 +69,14 @@
 
     .auth-logo {
         text-align: center;
-        font-size: 1.625rem;
+        font-size: 1.75rem;
         font-weight: 700;
-        color: #0d9488;
         margin-bottom: 1.5rem;
-        letter-spacing: -0.03em;
+        letter-spacing: -0.04em;
+        background: linear-gradient(135deg, #6366f1, #0ea5e9, #8b5cf6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
 
     .auth-card h1 {
@@ -103,7 +116,7 @@
     .auth-card .form-select,
     .auth-card .form-control {
         width: 100%;
-        padding: 0.625rem 0.875rem;
+        padding: 0.6875rem 0.875rem;
         border: 1.5px solid #e2e8f0;
         border-radius: 10px;
         font-size: 0.875rem;
@@ -114,18 +127,28 @@
         color: #1e293b;
     }
 
+    .auth-card .form-select {
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.875rem center;
+        padding-right: 2.5rem;
+        cursor: pointer;
+    }
+
     .auth-card .form-input:hover,
     .auth-card .form-select:hover,
     .auth-card .form-control:hover {
-        border-color: #cbd5e1;
+        border-color: #a5b4fc;
     }
 
     .auth-card .form-input:focus,
     .auth-card .form-select:focus,
     .auth-card .form-control:focus {
         outline: none;
-        border-color: #0d9488;
-        box-shadow: 0 0 0 3px rgba(13,148,136,0.12);
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
     }
 
     .auth-card .btn-primary {
@@ -134,7 +157,7 @@
         justify-content: center;
         width: 100%;
         padding: 0.75rem;
-        background: linear-gradient(135deg, #0d9488, #0f766e);
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
         color: #fff;
         border: none;
         border-radius: 10px;
@@ -142,18 +165,21 @@
         font-weight: 600;
         font-family: var(--font, 'Space Grotesk', sans-serif);
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.25s ease;
         margin-top: 1.25rem;
-        box-shadow: 0 2px 8px rgba(13,148,136,0.3);
+        box-shadow: 0 4px 15px rgba(99,102,241,0.35);
+        letter-spacing: 0.01em;
     }
 
     .auth-card .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(13,148,136,0.35);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(99,102,241,0.4);
+        background: linear-gradient(135deg, #818cf8, #6366f1);
     }
 
     .auth-card .btn-primary:active {
         transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(99,102,241,0.3);
     }
 
     .auth-card .auth-links {
@@ -164,12 +190,13 @@
     }
 
     .auth-card .auth-links a {
-        color: #0d9488;
+        color: #6366f1;
         text-decoration: none;
         font-weight: 600;
     }
 
     .auth-card .auth-links a:hover {
+        color: #4f46e5;
         text-decoration: underline;
     }
 
@@ -197,7 +224,7 @@
         .auth-wrapper { padding: 1rem; }
         .auth-card {
             padding: 2rem 1.5rem;
-            border-radius: 14px;
+            border-radius: 16px;
         }
     }
 </style>

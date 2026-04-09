@@ -1,6 +1,5 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
-import uuid
 
 
 class UserManager(BaseUserManager):
@@ -26,7 +25,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         STAFF = 'staff', 'Staff'
         CLIENT = 'client', 'Client'
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     mobile_number = models.CharField(max_length=15, unique=True)
     first_name = models.CharField(max_length=50, blank=True)
     last_name = models.CharField(max_length=50, blank=True)

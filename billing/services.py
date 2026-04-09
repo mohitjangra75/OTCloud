@@ -11,9 +11,9 @@ class BillingService:
 
     @staticmethod
     def _generate_invoice_number():
-        """Generate an invoice number in the format INV-YYYYMMDD-NNN."""
+        """Generate an invoice number in the format INV-OT-MMYY-NNN."""
         today = date.today()
-        prefix = f"INV-{today.strftime('%Y%m%d')}-"
+        prefix = f"INV-OT-{today.strftime('%m%y')}-"
         last_invoice = (
             Invoice.objects
             .filter(invoice_number__startswith=prefix)

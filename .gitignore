@@ -1,35 +1,25 @@
-# # Python
-# *.py[cod]
-# __pycache__/
-# *.so
+# Python
+*.py[cod]
+__pycache__/
+*.so
 
-# # Virtual environment
-# venv/
-# env/
-# .venv/
+# Virtual environment
+venv/
+env/
+.venv/
 
-# # Environment variables
-# .env
+# Environment variables
+.env
 
-# # Database
-# db.sqlite3
-# *.sqlite3
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# # Media uploads
-# media/
+# OS
+.DS_Store
+Thumbs.db
 
-# # Static files (collected)
-# staticfiles/
-
-# # IDE
-# .vscode/
-# .idea/
-# *.swp
-# *.swo
-
-# # OS
-# .DS_Store
-# Thumbs.db
-
-# # Claude Code
-# .claude/
+# Claude Code
+.claude/

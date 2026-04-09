@@ -1,41 +1,30 @@
-import uuid
 from django.db import models
 from django.conf import settings
 from core.models import CoreModel, ActiveManager, TimeStampModel
 
 
 class TherapyType(TimeStampModel):
-    """Types of therapy sessions offered with pricing."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    """Types of therapy sessions with duration and pricing."""
     is_active = models.BooleanField(default=True)
     is_deleted = models.BooleanField(default=False)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    price_30 = models.DecimalField(
-        max_digits=10, decimal_places=2,
-        verbose_name='Price (30 min)',
-        help_text='Session price for 30 minutes',
+    duration = models.IntegerField(
+        help_text='Session duration in minutes',
     )
-    price_60 = models.DecimalField(
+    price = models.DecimalField(
         max_digits=10, decimal_places=2,
-        verbose_name='Price (60 min)',
-        help_text='Session price for 60 minutes',
+        help_text='Price for this session',
     )
 
     objects = models.Manager()
     active_objects = ActiveManager()
 
     class Meta:
-        ordering = ['name']
+        ordering = ['name', 'duration']
 
     def __str__(self):
-        return self.name
-
-    def get_price(self, duration_minutes):
-        """Return the price based on session duration."""
-        if duration_minutes == 30:
-            return self.price_30
-        return self.price_60
+        return f"{self.name} ({self.duration} min)"
 
 
 class Appointment(CoreModel):
@@ -44,10 +33,6 @@ class Appointment(CoreModel):
         COMPLETED = 'completed', 'Completed'
         CANCELLED = 'cancelled', 'Cancelled'
         RESCHEDULED = 'rescheduled', 'Rescheduled'
-
-    class Duration(models.IntegerChoices):
-        THIRTY = 30, '30 Minutes'
-        SIXTY = 60, '60 Minutes'
 
     client = models.ForeignKey(
         'clients.Client',
@@ -67,10 +52,6 @@ class Appointment(CoreModel):
         null=True,
         blank=True,
     )
-    duration_minutes = models.IntegerField(
-        choices=Duration.choices,
-        default=Duration.SIXTY,
-    )
     date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
@@ -82,7 +63,7 @@ class Appointment(CoreModel):
     session_price = models.DecimalField(
         max_digits=10, decimal_places=2,
         default=0,
-        help_text='Auto-calculated from therapy type and duration',
+        help_text='Auto-calculated from therapy type',
     )
     notes = models.TextField(blank=True)
     cancellation_reason = models.TextField(blank=True)
@@ -98,9 +79,9 @@ class Appointment(CoreModel):
         return f"{self.client} - {self.date}{therapy}"
 
     def calculate_price(self):
-        """Calculate session price from therapy type and duration."""
+        """Calculate session price from therapy type."""
         if self.therapy_type:
-            self.session_price = self.therapy_type.get_price(self.duration_minutes)
+            self.session_price = self.therapy_type.price
         return self.session_price
 
     def save(self, *args, **kwargs):

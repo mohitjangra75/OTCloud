@@ -17,12 +17,12 @@ from attendance.services import AttendanceError, AttendanceService
 # ---------------------------------------------------------------------------
 
 def _staff_required(view_func):
-    """Allow only staff / superuser users."""
+    """Allow only users with role staff or admin."""
     from functools import wraps
 
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
-        if not (request.user.is_staff or request.user.is_superuser):
+        if request.user.role not in ('staff', 'admin'):
             messages.error(request, "You do not have permission to access attendance.")
             return redirect('/')
         return view_func(request, *args, **kwargs)
@@ -185,7 +185,7 @@ def live_timer_api(request):
     or
         { "checked_in": false, "elapsed_seconds": 0 }
     """
-    if not (request.user.is_staff or request.user.is_superuser):
+    if request.user.role not in ('staff', 'admin'):
         return JsonResponse({'error': 'forbidden'}, status=403)
 
     status = AttendanceService.get_current_status(request.user)

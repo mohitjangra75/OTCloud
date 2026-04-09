@@ -61,7 +61,6 @@ class AppointmentService:
             client=appointment.client,
             staff=appointment.staff,
             therapy_type=appointment.therapy_type,
-            duration_minutes=appointment.duration_minutes,
             session_price=appointment.session_price,
             date=new_date,
             start_time=new_start_time,
@@ -212,7 +211,7 @@ def _auto_invoice_session(appointment, created_by=None):
     from billing.services import BillingService
 
     therapy_name = appointment.therapy_type.name
-    duration_label = f"{appointment.duration_minutes} min"
+    duration_label = f"{appointment.therapy_type.duration} min"
     description = f"{therapy_name} ({duration_label}) - {appointment.date.strftime('%d %b %Y')}"
 
     BillingService.append_daily_session(

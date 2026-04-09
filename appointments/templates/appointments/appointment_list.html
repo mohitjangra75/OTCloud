@@ -166,7 +166,7 @@
                 {{ appointment.client.full_name }} - {{ appointment.date|date:"d M Y" }}, {{ appointment.start_time|time:"h:i A" }}
               </a>
             </td>
-            <td>{% if appointment.therapy_type %}{{ appointment.therapy_type.name }} ({{ appointment.get_duration_minutes_display }}){% else %}—{% endif %}</td>
+            <td>{% if appointment.therapy_type %}{{ appointment.therapy_type.name }} ({{ appointment.therapy_type.duration }} min){% else %}—{% endif %}</td>
             <td>{{ appointment.staff.get_full_name }}</td>
             <td>
               <span class="badge badge-{{ appointment.status }}">{{ appointment.get_status_display }}</span>
@@ -194,7 +194,7 @@
           <span class="badge badge-{{ appointment.status }}">{{ appointment.get_status_display }}</span>
         </div>
         <div class="mobile-card-details">
-          {% if appointment.therapy_type %}<span>{{ appointment.therapy_type.name }} &middot; {{ appointment.get_duration_minutes_display }}</span>{% endif %}
+          {% if appointment.therapy_type %}<span>{{ appointment.therapy_type.name }} &middot; {{ appointment.therapy_type.duration }} min</span>{% endif %}
           <span>Staff: {{ appointment.staff.get_full_name }}</span>
         </div>
         {% if request.user.role != 'client' %}

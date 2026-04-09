@@ -20,7 +20,7 @@ urlpatterns = [
     # Employee Management
     path('employees/', views.employee_list_view, name='employee_list'),
     path('employees/create/', views.create_employee_view, name='employee_create'),
-    path('employees/<uuid:pk>/', views.employee_detail_view, name='employee_detail'),
+    path('employees/<int:pk>/', views.employee_detail_view, name='employee_detail'),
 
     # Forgot / Reset Password
     path('forgot-password/', views.forgot_password_view, name='forgot_password'),

@@ -53,12 +53,13 @@ class RegistrationForm(forms.Form):
     )
     role = forms.ChoiceField(
         choices=[
-            (User.Role.STAFF, 'Staff'),
+            ('', 'Select Role'),
             (User.Role.CLIENT, 'Client'),
+            (User.Role.STAFF, 'Staff'),
         ],
         initial=User.Role.CLIENT,
         widget=forms.Select(attrs={
-            'class': 'form-input',
+            'class': 'form-select',
         }),
     )
 
@@ -223,7 +224,6 @@ class EmployeeCreateForm(forms.ModelForm):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data['password1'])
         user.is_verified = True
-        user.is_staff = True
         if commit:
             user.save()
         return user

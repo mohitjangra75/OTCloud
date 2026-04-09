@@ -22,7 +22,6 @@ class AppointmentForm(forms.ModelForm):
             'client',
             'staff',
             'therapy_type',
-            'duration_minutes',
             'date',
             'start_time',
             'end_time',
@@ -32,7 +31,6 @@ class AppointmentForm(forms.ModelForm):
             'client': forms.Select(attrs={'class': 'form-select'}),
             'staff': forms.Select(attrs={'class': 'form-select'}),
             'therapy_type': forms.Select(attrs={'class': 'form-select'}),
-            'duration_minutes': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
         }
 

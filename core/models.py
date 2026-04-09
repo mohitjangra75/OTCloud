@@ -1,4 +1,3 @@
-import uuid
 from django.db import models
 from django.conf import settings
 
@@ -14,7 +13,6 @@ class TimeStampModel(models.Model):
 
 class CoreModel(TimeStampModel):
     """Abstract base model for all major models in OTCloud."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     is_active = models.BooleanField(default=True)
     is_deleted = models.BooleanField(default=False)
     created_by = models.ForeignKey(
