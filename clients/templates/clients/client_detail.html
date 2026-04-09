@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}{{ client.full_name }} - OTCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+  .detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .detail-header-info h1 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+  }
+  .detail-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+  .info-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted, #94a3b8);
+  }
+  .info-value {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text, #1e293b);
+  }
+  .badge-scheduled { background: #dbeafe; color: #1d4ed8; }
+  .badge-completed { background: #dcfce7; color: #15803d; }
+  .badge-cancelled { background: #fee2e2; color: #b91c1c; }
+  .badge-rescheduled { background: #fef3c7; color: #92400e; }
+  .badge-no_show { background: #f1f5f9; color: #64748b; }
+  @media (min-width: 768px) {
+    .detail-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 640px) {
+    .detail-actions {
+      width: 100%;
+      flex-direction: column;
+    }
+    .detail-actions .btn {
+      width: 100%;
+      text-align: center;
+    }
+    .info-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header with name + actions -->
+<div class="detail-header">
+  <div class="detail-header-info">
+    <h1>{{ client.full_name }}</h1>
+  </div>
+  <div class="detail-actions">
+    <a href="{% url 'clients:client_update' pk=client.pk %}" class="btn btn-secondary">Edit</a>
+    <a href="{% url 'clients:client_delete' pk=client.pk %}" class="btn btn-danger">Delete</a>
+  </div>
+</div>
+
+<!-- Info Cards in grid -->
+<div class="detail-grid">
+  <!-- Client Information -->
+  <div class="card">
+    <div class="card-header"><h3>Client Information</h3></div>
+    <div class="card-body">
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Full Name</span>
+          <span class="info-value">{{ client.full_name }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Mobile</span>
+          <span class="info-value">{{ client.mobile_number }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Email</span>
+          <span class="info-value">{{ client.email|default:"Not provided" }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Date of Birth</span>
+          <span class="info-value">{{ client.date_of_birth|date:"d M Y"|default:"Not provided" }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Gender</span>
+          <span class="info-value">{{ client.get_gender_display|default:"Not specified" }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Address</span>
+          <span class="info-value">{{ client.address|default:"Not provided"|linebreaksbr }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Medical History -->
+  <div class="card">
+    <div class="card-header"><h3>Medical History</h3></div>
+    <div class="card-body">
+      {% if client.medical_history %}
+      <p>{{ client.medical_history|linebreaksbr }}</p>
+      {% else %}
+      <p class="text-muted">No medical history recorded.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Sessions -->
+  <div class="card">
+    <div class="card-header"><h3>Sessions</h3></div>
+    <div class="card-body">
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Total Sessions</span>
+          <span class="info-value">{{ session_count }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Appointments -->
+  <div class="card">
+    <div class="card-header"><h3>Recent Appointments</h3></div>
+    <div class="card-body">
+      {% if client.appointments.all %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Appointment</th>
+              <th>Staff</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for appt in client.appointments.all|slice:":10" %}
+            <tr>
+              <td>
+                <a href="{% url 'appointments:appointment_detail' pk=appt.pk %}" class="link-primary">
+                  {{ client.full_name }} - {{ appt.date|date:"d M Y" }}, {{ appt.start_time|time:"h:i A" }}
+                </a>
+              </td>
+              <td>{{ appt.staff.get_full_name }}</td>
+              <td>
+                <span class="badge badge-{{ appt.status }}">{{ appt.get_status_display }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted">No appointments yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

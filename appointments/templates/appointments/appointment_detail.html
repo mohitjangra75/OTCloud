@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Appointment - {{ appointment.client.full_name }} - OTCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+  .detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .detail-header-info h1 {
+    font-size: 1.375rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+  }
+  .detail-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary, #64748b);
+  }
+  .detail-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+  .info-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted, #94a3b8);
+  }
+  .info-value {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text, #1e293b);
+  }
+  .cancel-link {
+    font-size: 0.8125rem;
+    color: var(--text-muted, #94a3b8);
+    text-decoration: none;
+  }
+  .cancel-link:hover {
+    color: var(--error, #dc2626);
+    text-decoration: underline;
+  }
+  @media (min-width: 768px) {
+    .detail-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 640px) {
+    .detail-actions {
+      width: 100%;
+    }
+    .detail-actions .btn {
+      flex: 1;
+    }
+    .info-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header with status badge + actions -->
+<div class="detail-header">
+  <div class="detail-actions">
+    {% if appointment.status == 'scheduled' or appointment.status == 'rescheduled' %}
+    <a href="{% url 'appointments:appointment_reschedule' pk=appointment.pk %}" class="btn btn-outline">Reschedule</a>
+    <form method="post" action="{% url 'appointments:appointment_complete' pk=appointment.pk %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-success">Mark Complete</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Info Cards in grid -->
+<div class="detail-grid">
+  <!-- Appointment Info -->
+  <div class="card">
+    <div class="card-header"><h3>Appointment Info</h3></div>
+    <div class="card-body">
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Date</span>
+          <span class="info-value">{{ appointment.date|date:"d M Y" }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Time</span>
+          <span class="info-value">{{ appointment.start_time|time:"h:i A" }} - {{ appointment.end_time|time:"h:i A" }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Status</span>
+          <span class="info-value">{{ appointment.get_status_display }}</span></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Notes</span>
+          <span class="info-value">{{ appointment.notes|default:"No notes" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client Info -->
+  <div class="card">
+    <div class="card-header"><h3>Client</h3></div>
+    <div class="card-body">
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Name</span>
+          <span class="info-value"><a href="{% url 'clients:client_detail' pk=appointment.client.pk %}" class="link-primary">{{ appointment.client.full_name }}</a></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Mobile</span>
+          <span class="info-value">{{ appointment.client.mobile_number }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Total Sessions</span>
+          <span class="info-value">{{ session_count }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Staff Info -->
+  <div class="card">
+    <div class="card-header"><h3>Staff</h3></div>
+    <div class="card-body">
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Name</span>
+          <span class="info-value">{{ appointment.staff.get_full_name }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Email</span>
+          <span class="info-value">{{ appointment.staff.email|default:"Not provided" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancellation reason if cancelled -->
+  {% if appointment.status == 'cancelled' and appointment.cancellation_reason %}
+  <div class="card">
+    <div class="card-header"><h3>Cancellation Reason</h3></div>
+    <div class="card-body">
+      <p>{{ appointment.cancellation_reason|linebreaksbr }}</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if appointment.status == 'scheduled' or appointment.status == 'rescheduled' %}
+<div style="margin-top: 1.5rem; text-align: center;">
+  <a href="{% url 'appointments:appointment_cancel' pk=appointment.pk %}" class="btn btn-danger">Cancel Appointment</a>
+</div>
+{% endif %}
+{% endblock %}

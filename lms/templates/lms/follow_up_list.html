@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Pending Follow-ups - OTCloud{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Pending Follow-ups</h1>
+  </div>
+  <div class="page-header-right">
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Lead Name</th>
+            <th>Follow-up Date</th>
+            <th>Notes</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for follow_up in page_obj %}
+          <tr>
+            <td>
+              <a href="{% url 'lms:lead_detail' pk=follow_up.lead.pk %}" class="link-primary">{{ follow_up.lead.name }}</a>
+            </td>
+            <td>{{ follow_up.follow_up_date|date:"M d, Y H:i" }}</td>
+            <td>{{ follow_up.notes|default:"--"|truncatewords:20 }}</td>
+            <td>
+              <span class="badge {% if follow_up.status == 'pending' %}badge-yellow{% elif follow_up.status == 'completed' %}badge-green{% elif follow_up.status == 'missed' %}badge-red{% endif %}">
+                {{ follow_up.get_status_display }}
+              </span>
+            </td>
+            <td>
+              {% if follow_up.status == 'pending' %}
+              <form method="post" action="{% url 'lms:follow_up_mark_completed' pk=follow_up.pk %}" class="inline-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-success">Mark Complete</button>
+              </form>
+              {% else %}
+              <span class="text-muted">--</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="table-empty">No follow-ups found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% include "components/pagination.html" %}
+  </div>
+</div>
+{% endblock %}

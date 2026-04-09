@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - OTCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+  .notification-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .notification-card {
+    border-left: 3px solid var(--border, #e5e7eb);
+    transition: border-color 0.2s;
+  }
+  .notification-card.notification-unread {
+    border-left-color: var(--primary, #6366f1);
+    background: #f8f7ff;
+  }
+  .notification-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .notification-icon {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--bg-secondary, #f3f4f6);
+    color: var(--text-secondary, #6b7280);
+  }
+  .notification-unread .notification-icon {
+    background: #ede9fe;
+    color: var(--primary, #6366f1);
+  }
+  .notification-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .notification-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.125rem;
+  }
+  .notification-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary, #111827);
+    margin: 0;
+  }
+  .notification-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary, #6366f1);
+    flex-shrink: 0;
+  }
+  .notification-message {
+    font-size: 0.8125rem;
+    color: var(--text-secondary, #6b7280);
+    margin: 0.25rem 0;
+    line-height: 1.4;
+  }
+  .notification-time {
+    font-size: 0.75rem;
+    color: var(--text-muted, #9ca3af);
+  }
+  .notification-actions {
+    flex-shrink: 0;
+    align-self: center;
+  }
+  .empty-state-notifications {
+    padding: 4rem 1rem;
+    text-align: center;
+    color: var(--text-muted, #9ca3af);
+  }
+  .empty-state-notifications svg {
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+  .empty-state-notifications p {
+    margin: 0;
+  }
+  .empty-state-notifications .empty-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary, #6b7280);
+    margin-bottom: 0.25rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Notifications</h1>
+  </div>
+  <div class="page-header-right">
+    <form method="post" action="{% url 'notifications:notification_mark_all_read' %}" class="inline-form">
+      {% csrf_token %}
+      {% if has_unread %}
+      <button type="submit" class="btn btn-secondary">Mark All Read</button>
+      {% else %}
+      <button type="submit" class="btn btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;">Mark All Read</button>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="notification-list">
+  {% for notification in page_obj %}
+  <div class="card notification-card {% if not notification.is_read %}notification-unread{% endif %}">
+    <div class="card-body">
+      <div class="notification-content">
+        <div class="notification-icon">
+          {% if notification.type == 'attendance' %}
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          {% elif notification.type == 'appointment' %}
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          {% elif notification.type == 'billing' %}
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          {% elif notification.type == 'lms' %}
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          {% else %}
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          {% endif %}
+        </div>
+        <div class="notification-body">
+          <div class="notification-header">
+            <h3 class="notification-title">{{ notification.title }}</h3>
+            {% if not notification.is_read %}
+            <span class="notification-dot"></span>
+            {% endif %}
+          </div>
+          <p class="notification-message">{{ notification.message }}</p>
+          <span class="notification-time">{{ notification.created_at|timesince }} ago</span>
+        </div>
+        <div class="notification-actions">
+          {% if not notification.is_read %}
+          <form method="post" action="{% url 'notifications:notification_mark_read' pk=notification.pk %}" class="inline-form">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline btn-sm" title="Mark as read">Mark Read</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="card">
+    <div class="card-body">
+      <div class="empty-state-notifications">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <p class="empty-title">No notifications</p>
+        <p>You're all caught up. New notifications will appear here.</p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% include "components/pagination.html" %}
+{% endblock %}

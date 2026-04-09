@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}{{ lead.name }} - Leads - OTCloud{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+  </div>
+  <div class="page-header-right">
+    {% if lead.status != 'converted' %}
+    <form method="post" action="{% url 'lms:lead_convert' pk=lead.pk %}" class="inline-form">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-success" onclick="return confirm('Convert this lead to a client?')">Convert to Client</button>
+    </form>
+    {% endif %}
+    <a href="{% url 'lms:lead_update' pk=lead.pk %}" class="btn btn-secondary">Edit</a>
+    <a href="{% url 'lms:lead_delete' pk=lead.pk %}" class="btn btn-danger">Delete</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <h2 class="card-title">{{ lead.name }}</h2>
+      <span class="badge {% if lead.status == 'new' %}badge-blue{% elif lead.status == 'contacted' %}badge-yellow{% elif lead.status == 'interested' %}badge-orange{% elif lead.status == 'converted' %}badge-green{% elif lead.status == 'lost' %}badge-red{% endif %}">
+        {{ lead.get_status_display }}
+      </span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="detail-grid">
+      <div class="detail-item">
+        <span class="detail-label">Mobile</span>
+        <span class="detail-value">{{ lead.mobile }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Email</span>
+        <span class="detail-value">{{ lead.email|default:"--" }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Source</span>
+        <span class="detail-value">{{ lead.get_source_display }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Assigned To</span>
+        <span class="detail-value">{{ lead.assigned_to.get_full_name|default:"Unassigned" }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Created</span>
+        <span class="detail-value">{{ lead.created_at|date:"M d, Y" }}</span>
+      </div>
+      {% if lead.converted_client %}
+      <div class="detail-item">
+        <span class="detail-label">Converted Client</span>
+        <span class="detail-value">{{ lead.converted_client }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if lead.notes %}
+    <div class="detail-section">
+      <h3 class="detail-section-title">Notes</h3>
+      <p>{{ lead.notes|linebreaksbr }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Follow-ups</h2>
+  </div>
+  <div class="card-body">
+    {% if follow_ups %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Notes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fu in follow_ups %}
+          <tr>
+            <td>{{ fu.follow_up_date|date:"M d, Y H:i" }}</td>
+            <td>
+              <span class="badge {% if fu.status == 'pending' %}badge-yellow{% elif fu.status == 'completed' %}badge-green{% elif fu.status == 'missed' %}badge-red{% endif %}">
+                {{ fu.get_status_display }}
+              </span>
+            </td>
+            <td>{{ fu.notes|default:"--"|truncatewords:20 }}</td>
+            <td>
+              {% if fu.status == 'pending' %}
+              <form method="post" action="{% url 'lms:follow_up_mark_completed' pk=fu.pk %}" class="inline-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-success">Mark Complete</button>
+              </form>
+              {% else %}
+              <span class="text-muted">--</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No follow-ups scheduled.</p>
+    {% endif %}
+
+    <div class="detail-section">
+      <h3 class="detail-section-title">Schedule Follow-up</h3>
+      <form method="post" action="{% url 'lms:lead_add_follow_up' pk=lead.pk %}" class="form-inline">
+        {% csrf_token %}
+        <div class="form-row">
+          {% for field in follow_up_form %}
+          <div class="form-group">
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+            <ul class="form-errors">
+              {% for error in field.errors %}
+              <li>{{ error }}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+          </div>
+          {% endfor %}
+          <div class="form-group form-group-action">
+            <button type="submit" class="btn btn-primary">Add Follow-up</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

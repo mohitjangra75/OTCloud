@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Clients - OTCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+  .list-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg, #f8fafc);
+    border-radius: var(--radius-lg, 12px);
+    border: 1px solid var(--border-light, #f1f5f9);
+  }
+  .search-box {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+  }
+  .search-box .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted, #94a3b8);
+    pointer-events: none;
+  }
+  .search-box .search-input {
+    padding-left: 2.5rem;
+  }
+  .toolbar-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .link-primary {
+    font-weight: 600;
+    color: var(--primary, #0d9488);
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .link-primary:hover {
+    text-decoration: underline;
+    color: var(--primary-hover, #0f766e);
+  }
+  .table-actions-cell {
+    display: flex;
+    gap: 0.375rem;
+    align-items: center;
+  }
+  .empty-state-icon {
+    margin-bottom: 1rem;
+    color: var(--text-muted, #9ca3af);
+  }
+
+  /* Mobile cards */
+  .mobile-cards { display: none; }
+  .mobile-card {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+  }
+  .mobile-card:last-child { border-bottom: none; }
+  .mobile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .mobile-card-name {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--text-primary, #111827);
+    text-decoration: none;
+  }
+  .mobile-card-name:hover { color: var(--primary, #2563eb); }
+  .mobile-card-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary, #6b7280);
+  }
+  .mobile-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mobile-card-actions {
+    display: flex;
+    gap: 0.375rem;
+    margin-top: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-light, #f1f5f9);
+  }
+
+  @media (max-width: 640px) {
+    .desktop-table { display: none; }
+    .mobile-cards { display: block; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Clients</h1>
+  </div>
+  <div class="page-header-right">
+    <a href="{% url 'clients:client_create' %}" class="btn btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem; vertical-align: -2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Client
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <!-- Search toolbar -->
+    <form method="get" action="{% url 'clients:client_list' %}">
+      <div class="list-toolbar">
+        <div class="search-box">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" name="q" value="{{ search_query }}" placeholder="Search clients by name, mobile or email..." class="form-input search-input" aria-label="Search clients">
+        </div>
+        <div class="toolbar-actions">
+          <button type="submit" class="btn btn-primary btn-sm">Search</button>
+          {% if search_query %}
+          <a href="{% url 'clients:client_list' %}" class="btn btn-outline btn-sm">Clear</a>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+
+    {% if clients %}
+
+    <!-- Desktop table -->
+    <div class="table-responsive">
+      <table class="desktop-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Mobile</th>
+            <th>Email</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for client in clients %}
+          <tr>
+            <td><a href="{% url 'clients:client_detail' pk=client.pk %}" class="link-primary">{{ client.full_name }}</a></td>
+            <td>{{ client.mobile_number }}</td>
+            <td>{{ client.email|default:"-" }}</td>
+            <td>
+              <div class="table-actions-cell">
+                <a href="{% url 'clients:client_update' pk=client.pk %}" class="btn btn-sm btn-secondary" title="Edit">Edit</a>
+                <a href="{% url 'clients:client_delete' pk=client.pk %}" class="btn btn-sm btn-danger" title="Delete">Delete</a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile cards -->
+    <div class="mobile-cards">
+      {% for client in clients %}
+      <div class="mobile-card">
+        <div class="mobile-card-header">
+          <a href="{% url 'clients:client_detail' pk=client.pk %}" class="mobile-card-name">{{ client.full_name }}</a>
+        </div>
+        <div class="mobile-card-details">
+          <div class="mobile-card-row">
+            <span>{{ client.mobile_number }}</span>
+          </div>
+          {% if client.email %}
+          <span>{{ client.email }}</span>
+          {% endif %}
+        </div>
+        <div class="mobile-card-actions">
+          <a href="{% url 'clients:client_update' pk=client.pk %}" class="btn btn-sm btn-secondary">Edit</a>
+          <a href="{% url 'clients:client_delete' pk=client.pk %}" class="btn btn-sm btn-danger">Delete</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% include "components/pagination.html" %}
+
+    {% else %}
+    <div class="empty-state" style="padding: 3rem 1rem; text-align: center;">
+      <div class="empty-state-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      {% if search_query %}
+      <p class="empty-state-text">No clients matching "{{ search_query }}"</p>
+      <p class="empty-state-hint">Try adjusting your search query or <a href="{% url 'clients:client_list' %}">view all clients</a>.</p>
+      {% else %}
+      <p class="empty-state-text">No clients yet</p>
+      <p class="empty-state-hint" style="margin-bottom: 1rem;">Get started by adding your first client.</p>
+      <a href="{% url 'clients:client_create' %}" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem; vertical-align: -2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add your first client
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

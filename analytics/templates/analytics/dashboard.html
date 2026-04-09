@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Dashboard | OTCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+  .greeting-section {
+    margin-bottom: 1.5rem;
+  }
+  .greeting-section h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 0.125rem;
+    color: var(--text, #1e293b);
+  }
+  .greeting-section .date-text {
+    font-size: 0.8125rem;
+    color: var(--text-muted, #94a3b8);
+  }
+
+  /* Section headers */
+  .section-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted, #94a3b8);
+    margin: 1.5rem 0 0.75rem;
+  }
+  .section-title:first-of-type {
+    margin-top: 0;
+  }
+
+  /* Quick actions */
+  .quick-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Two column layout */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  @media (min-width: 768px) {
+    .two-col { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* Schedule list */
+  .schedule-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-light, #f1f5f9);
+  }
+  .schedule-item:last-child { border-bottom: none; }
+  .schedule-time {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--primary, #0d9488);
+    min-width: 65px;
+    font-variant-numeric: tabular-nums;
+  }
+  .schedule-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .schedule-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text, #1e293b);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .schedule-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted, #94a3b8);
+  }
+
+  /* Summary row */
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid var(--border-light, #f1f5f9);
+    font-size: 0.875rem;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row-label { color: var(--text-secondary, #64748b); }
+  .summary-row-value { font-weight: 600; color: var(--text, #1e293b); font-variant-numeric: tabular-nums; }
+
+  /* Upcoming appointment cards for clients */
+  .upcoming-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border-light, #f1f5f9);
+    border-radius: var(--radius-lg, 12px);
+    background: var(--bg, #f8fafc);
+    transition: all 0.15s;
+  }
+  .upcoming-card:hover {
+    border-color: var(--primary, #0d9488);
+    background: var(--bg-white, #fff);
+  }
+  .upcoming-date {
+    text-align: center;
+    min-width: 48px;
+  }
+  .upcoming-date .day {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text, #1e293b);
+    line-height: 1;
+  }
+  .upcoming-date .month {
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--primary, #0d9488);
+    letter-spacing: 0.05em;
+  }
+  .upcoming-info {
+    flex: 1;
+  }
+  .upcoming-time {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text, #1e293b);
+  }
+  .upcoming-staff {
+    font-size: 0.75rem;
+    color: var(--text-muted, #94a3b8);
+  }
+  .upcoming-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  @media (min-width: 640px) {
+    .upcoming-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="greeting-section">
+  <h1>Dashboard</h1>
+  <span class="date-text">{{ today|date:"l, F j, Y" }}</span>
+</div>
+
+{# ───────────────────── ADMIN VIEW ───────────────────── #}
+{% if request.user.is_admin %}
+
+  <p class="section-title">Overview</p>
+  <div class="stats-grid">
+    <div class="stat-card stat-card--info">
+      <div class="stat-card-label">Total Staff</div>
+      <div class="stat-card-value">{{ total_staff }}</div>
+    </div>
+    <div class="stat-card stat-card--success">
+      <div class="stat-card-label">Total Clients</div>
+      <div class="stat-card-value">{{ total_clients }}</div>
+    </div>
+    <div class="stat-card stat-card--warning">
+      <div class="stat-card-label">Active Leads</div>
+      <div class="stat-card-value">{{ total_leads }}</div>
+    </div>
+    <div class="stat-card stat-card--danger">
+      <div class="stat-card-label">Monthly Revenue</div>
+      <div class="stat-card-value">{{ month_revenue|intcomma }}</div>
+    </div>
+  </div>
+
+  <p class="section-title">Today's Pulse</p>
+  <div class="stats-grid">
+    <div class="stat-card stat-card--success">
+      <div class="stat-card-label">Checked In</div>
+      <div class="stat-card-value">{{ checked_in_today }}</div>
+    </div>
+    <div class="stat-card stat-card--info">
+      <div class="stat-card-label">Appointments</div>
+      <div class="stat-card-value">{{ today_appointments_count }}</div>
+    </div>
+    <div class="stat-card stat-card--warning">
+      <div class="stat-card-label">Follow-ups</div>
+      <div class="stat-card-value">{{ pending_follow_ups }}</div>
+    </div>
+    <div class="stat-card stat-card--danger">
+      <div class="stat-card-label">Pending Revenue</div>
+      <div class="stat-card-value">{{ pending_revenue|intcomma }}</div>
+    </div>
+  </div>
+
+  <p class="section-title">Your Stats</p>
+  <div class="stats-grid">
+    <div class="stat-card stat-card--info">
+      <div class="stat-card-label">Today's Hours</div>
+      <div class="stat-card-value">{{ today_hours }}</div>
+    </div>
+    <div class="stat-card stat-card--success">
+      <div class="stat-card-label">Monthly Hours</div>
+      <div class="stat-card-value">{{ month_hours }}</div>
+    </div>
+    <div class="stat-card stat-card--warning">
+      <div class="stat-card-label">Attendance Days</div>
+      <div class="stat-card-value">{{ attendance_days }}</div>
+    </div>
+    <div class="stat-card stat-card--danger">
+      <div class="stat-card-label">Sessions Done</div>
+      <div class="stat-card-value">{{ completed_sessions }}</div>
+    </div>
+  </div>
+
+  <div class="quick-actions">
+    <a href="{% url 'appointments:appointment_create' %}" class="btn btn-primary btn-sm">+ New Appointment</a>
+    <a href="{% url 'clients:client_create' %}" class="btn btn-outline btn-sm">+ Add Client</a>
+    <a href="{% url 'lms:lead_create' %}" class="btn btn-outline btn-sm">+ Add Lead</a>
+  </div>
+
+  <div class="two-col">
+    <!-- Today's Schedule -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Today's Schedule</h3>
+        <a href="{% url 'appointments:appointment_list' %}" class="btn btn-sm btn-outline">View All</a>
+      </div>
+      <div class="card-body">
+        {% if todays_appointments %}
+          {% for appt in todays_appointments %}
+          <div class="schedule-item">
+            <span class="schedule-time">{{ appt.start_time|time:"h:i A" }}</span>
+            <div class="schedule-info">
+              <div class="schedule-name">{{ appt.client }}</div>
+            </div>
+            <span class="badge {% if appt.status == 'scheduled' %}badge-info{% elif appt.status == 'completed' %}badge-success{% elif appt.status == 'cancelled' %}badge-danger{% else %}badge-secondary{% endif %}">{{ appt.get_status_display }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center" style="padding: 1.5rem 0; font-size: 0.8125rem;">No appointments today</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Recent Leads -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Recent Leads</h3>
+        <a href="{% url 'lms:lead_list' %}" class="btn btn-sm btn-outline">View All</a>
+      </div>
+      <div class="card-body">
+        {% if recent_leads %}
+          {% for lead in recent_leads %}
+          <div class="schedule-item">
+            <div class="schedule-info">
+              <div class="schedule-name">{{ lead.name }}</div>
+              <div class="schedule-meta">{{ lead.created_at|date:"M j" }}</div>
+            </div>
+            <span class="badge {% if lead.status == 'new' %}badge-info{% elif lead.status == 'contacted' %}badge-warning{% elif lead.status == 'converted' %}badge-success{% elif lead.status == 'lost' %}badge-danger{% else %}badge-secondary{% endif %}">{{ lead.get_status_display }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center" style="padding: 1.5rem 0; font-size: 0.8125rem;">No leads yet</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <!-- All Employees -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Employees</h3>
+        <a href="{% url 'accounts:employee_list' %}" class="btn btn-sm btn-outline">View All</a>
+      </div>
+      <div class="card-body">
+        {% if all_staff %}
+          {% for staff in all_staff %}
+          <div class="schedule-item">
+            <div class="schedule-info">
+              <div class="schedule-name">{{ staff.get_full_name|default:staff.mobile_number }}</div>
+              <div class="schedule-meta">{{ staff.month_sessions }} sessions this month</div>
+            </div>
+            {% if staff.is_active %}
+              <span class="badge badge-success">Active</span>
+            {% else %}
+              <span class="badge badge-danger">Inactive</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center" style="padding: 1.5rem 0; font-size: 0.8125rem;">No employees yet</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- All Clients -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Clients</h3>
+        <a href="{% url 'clients:client_list' %}" class="btn btn-sm btn-outline">View All</a>
+      </div>
+      <div class="card-body">
+        {% if all_clients %}
+          {% for client in all_clients %}
+          <div class="schedule-item">
+            <div class="schedule-info">
+              <div class="schedule-name">{{ client.full_name }}</div>
+              <div class="schedule-meta">{{ client.total_sessions }} sessions</div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center" style="padding: 1.5rem 0; font-size: 0.8125rem;">No clients yet</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+{# ───────────────────── STAFF VIEW ───────────────────── #}
+{% elif request.user.role == 'staff' %}
+
+  <p class="section-title">My Stats</p>
+  <div class="stats-grid">
+    <div class="stat-card stat-card--info">
+      <div class="stat-card-label">Today's Hours</div>
+      <div class="stat-card-value">{{ today_hours }}</div>
+    </div>
+    <div class="stat-card stat-card--success">
+      <div class="stat-card-label">Monthly Hours</div>
+      <div class="stat-card-value">{{ month_hours }}</div>
+    </div>
+    <div class="stat-card stat-card--warning">
+      <div class="stat-card-label">Upcoming</div>
+      <div class="stat-card-value">{{ upcoming_appointments }}</div>
+    </div>
+    <div class="stat-card stat-card--danger">
+      <div class="stat-card-label">Sessions Done</div>
+      <div class="stat-card-value">{{ completed_sessions }}</div>
+    </div>
+  </div>
+
+  <div class="quick-actions">
+    <a href="{% url 'attendance:dashboard' %}" class="btn btn-primary btn-sm">Attendance</a>
+    <a href="{% url 'appointments:appointment_create' %}" class="btn btn-outline btn-sm">+ New Appointment</a>
+  </div>
+
+  <div class="two-col">
+    <!-- My Schedule -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Today's Schedule</h3>
+      </div>
+      <div class="card-body">
+        {% if todays_appointments %}
+          {% for appt in todays_appointments %}
+          <div class="schedule-item">
+            <span class="schedule-time">{{ appt.start_time|time:"h:i A" }}</span>
+            <div class="schedule-info">
+              <div class="schedule-name">{{ appt.client }}</div>
+            </div>
+            <span class="badge {% if appt.status == 'scheduled' %}badge-info{% elif appt.status == 'completed' %}badge-success{% elif appt.status == 'cancelled' %}badge-danger{% else %}badge-secondary{% endif %}">{{ appt.get_status_display }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted text-center" style="padding: 1.5rem 0; font-size: 0.8125rem;">No appointments today</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Attendance Summary -->
+    <div class="card">
+      <div class="card-header">
+        <h3>This Month</h3>
+      </div>
+      <div class="card-body">
+        <div class="summary-row">
+          <span class="summary-row-label">Days Present</span>
+          <span class="summary-row-value">{{ attendance_days }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-row-label">Total Hours</span>
+          <span class="summary-row-value">{{ month_hours }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-row-label">Sessions Completed</span>
+          <span class="summary-row-value">{{ month_sessions }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{# ───────────────────── CLIENT VIEW ───────────────────── #}
+{% elif request.user.role == 'client' %}
+
+  {% if client_profile %}
+
+  <p class="section-title">My Overview</p>
+  <div class="stats-grid">
+    <div class="stat-card stat-card--info">
+      <div class="stat-card-label">Total Sessions</div>
+      <div class="stat-card-value">{{ total_sessions }}</div>
+    </div>
+    <div class="stat-card stat-card--success">
+      <div class="stat-card-label">Upcoming</div>
+      <div class="stat-card-value">{{ upcoming_appointments|length }}</div>
+    </div>
+    <div class="stat-card stat-card--warning">
+      <div class="stat-card-label">Total Paid</div>
+      <div class="stat-card-value">{{ total_paid|intcomma }}</div>
+    </div>
+    <div class="stat-card stat-card--danger">
+      <div class="stat-card-label">Pending Invoices</div>
+      <div class="stat-card-value">{{ pending_invoices }}</div>
+    </div>
+  </div>
+
+  <!-- Upcoming Appointments -->
+  <div class="card" style="margin-bottom: 1rem;">
+    <div class="card-header">
+      <h3>Upcoming Appointments</h3>
+    </div>
+    <div class="card-body">
+      {% if upcoming_appointments %}
+      <div class="upcoming-grid">
+        {% for appt in upcoming_appointments %}
+        <div class="upcoming-card">
+          <div class="upcoming-date">
+            <div class="day">{{ appt.date|date:"j" }}</div>
+            <div class="month">{{ appt.date|date:"M" }}</div>
+          </div>
+          <div class="upcoming-info">
+            <div class="upcoming-time">{{ appt.start_time|time:"h:i A" }}</div>
+            <div class="upcoming-staff">with {{ appt.staff.get_full_name|default:appt.staff }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+        <p class="text-muted text-center" style="padding: 1.5rem 0; font-size: 0.8125rem;">No upcoming appointments</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recent Sessions -->
+  {% if recent_appointments %}
+  <div class="card">
+    <div class="card-header">
+      <h3>Recent Sessions</h3>
+    </div>
+    <div class="card-body">
+      {% for appt in recent_appointments %}
+      <div class="schedule-item">
+        <span class="schedule-time">{{ appt.date|date:"M j" }}</span>
+        <div class="schedule-info">
+          <div class="schedule-name">{{ appt.start_time|time:"h:i A" }}</div>
+          <div class="schedule-meta">with {{ appt.staff.get_full_name|default:appt.staff }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="card">
+    <div class="card-body" style="padding: 3rem; text-align: center;">
+      <p style="font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.25rem;">Profile Not Set Up</p>
+      <p class="text-muted" style="font-size: 0.8125rem;">Your client profile is not set up yet. Please contact the clinic.</p>
+    </div>
+  </div>
+  {% endif %}
+
+{% endif %}
+{% endblock %}

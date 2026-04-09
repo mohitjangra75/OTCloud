@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{{ action }} Client - OTCloud{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">{% if client %}Edit Client{% else %}Add Client{% endif %}</h1>
+  </div>
+</div>
+
+<div class="card" style="max-width: 640px;">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+      <div class="form-errors">
+        {% for error in form.non_field_errors %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% for field in form %}
+      <div class="form-group {% if field.errors %}has-error{% endif %}">
+        <label for="{{ field.id_for_label }}" class="form-label">
+          {{ field.label }}
+          {% if field.field.required %}<span class="required">*</span>{% endif %}
+        </label>
+        {{ field }}
+        {% if field.help_text %}
+        <p class="form-help">{{ field.help_text }}</p>
+        {% endif %}
+        {% if field.errors %}
+        <ul class="field-errors">
+          {% for error in field.errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        {% if client %}
+        <a href="{% url 'clients:client_detail' pk=client.pk %}" class="btn btn-outline">Cancel</a>
+        {% else %}
+        <a href="{% url 'clients:client_list' %}" class="btn btn-outline">Cancel</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

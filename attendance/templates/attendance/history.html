@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% load attendance_filters %}
+
+{% block title %}Attendance History | OTCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+  .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .history-header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  /* Month Navigation */
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+  }
+  .month-nav a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    color: var(--text-primary, #111827);
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .month-nav a:hover {
+    background: var(--hover-bg, #f3f4f6);
+  }
+  .month-nav .month-label {
+    font-size: 1rem;
+    font-weight: 600;
+    min-width: 140px;
+    text-align: center;
+  }
+
+  /* Monthly Total Card */
+  .monthly-total {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    margin-bottom: 2rem;
+    display: inline-block;
+  }
+  .monthly-total .label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+  }
+  .monthly-total .value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-primary, #111827);
+  }
+
+  /* Day Accordion */
+  .day-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .day-card {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 0.75rem;
+    overflow: hidden;
+  }
+  .day-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .day-header:hover {
+    background: var(--hover-bg, #f9fafb);
+  }
+  .day-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .day-date {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--text-primary, #111827);
+  }
+  .day-meta {
+    font-size: 0.8125rem;
+    color: var(--text-muted, #6b7280);
+  }
+  .day-total {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--text-primary, #111827);
+  }
+  .day-chevron {
+    transition: transform 0.2s;
+    color: var(--text-muted, #6b7280);
+  }
+  .day-card.open .day-chevron {
+    transform: rotate(180deg);
+  }
+  .day-body {
+    display: none;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+  }
+  .day-card.open .day-body {
+    display: block;
+  }
+
+  /* Session Rows */
+  .session-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .session-table th,
+  .session-table td {
+    padding: 0.625rem 1.25rem;
+    text-align: left;
+    font-size: 0.8125rem;
+  }
+  .session-table th {
+    background: var(--table-header-bg, #f9fafb);
+    font-weight: 600;
+    color: var(--text-muted, #6b7280);
+    text-transform: uppercase;
+    font-size: 0.6875rem;
+    letter-spacing: 0.05em;
+  }
+  .session-table tbody tr + tr {
+    border-top: 1px solid var(--border-color, #e5e7eb);
+  }
+  .badge-active {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    background: #dcfce7;
+    color: #16a34a;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .empty-state {
+    padding: 3rem;
+    text-align: center;
+    color: var(--text-muted, #6b7280);
+    font-size: 0.875rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="history-header">
+  <h1>Attendance History</h1>
+
+  <div class="month-nav">
+    <a href="?year={{ prev_year }}&month={{ prev_month }}" aria-label="Previous month">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <span class="month-label">{{ month_name }} {{ year }}</span>
+    <a href="?year={{ next_year }}&month={{ next_month }}" aria-label="Next month">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+  </div>
+</div>
+
+<!-- Monthly Total -->
+<div class="monthly-total">
+  <div class="label">Monthly Total</div>
+  <div class="value">{{ monthly_total_display }}</div>
+</div>
+
+<!-- Day-by-Day List -->
+{% if days %}
+<div class="day-list">
+  {% for day in days %}
+  <div class="day-card" data-day-card>
+    <div class="day-header" data-day-toggle>
+      <div class="day-header-left">
+        <span class="day-date">{{ day.date|date:"D, M j" }}</span>
+        <span class="day-meta">{{ day.logs|length }} session{{ day.logs|length|pluralize }}</span>
+      </div>
+      <div class="day-header-left" style="gap: 0.75rem;">
+        <span class="day-total">{{ day.total_display }}</span>
+        <svg class="day-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+    <div class="day-body">
+      <table class="session-table">
+        <thead>
+          <tr>
+            <th>Check In</th>
+            <th>Check Out</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in day.logs %}
+          <tr>
+            <td>{{ log.check_in_time|time:"h:i A" }}</td>
+            <td>
+              {% if log.check_out_time %}
+                {{ log.check_out_time|time:"h:i A" }}
+              {% else %}
+                <span class="badge-active">Active</span>
+              {% endif %}
+            </td>
+            <td>
+              {{ log.duration|format_duration }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No attendance records found for {{ month_name }} {{ year }}.</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  document.querySelectorAll('[data-day-toggle]').forEach(function(toggle) {
+    toggle.addEventListener('click', function() {
+      var card = toggle.closest('[data-day-card]');
+      card.classList.toggle('open');
+    });
+  });
+})();
+</script>
+{% endblock %}

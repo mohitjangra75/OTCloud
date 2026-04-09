@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Invoice {{ invoice.invoice_number }} - OTCloud{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+  </div>
+  <div class="page-header-right">
+    <a href="{% url 'billing:invoice_update' pk=invoice.pk %}" class="btn btn-secondary">Edit</a>
+    <a href="{% url 'billing:invoice_delete' pk=invoice.pk %}" class="btn btn-danger">Delete</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <h2 class="card-title">Invoice {{ invoice.invoice_number }}</h2>
+      <span class="badge {% if invoice.status == 'draft' %}badge-gray{% elif invoice.status == 'sent' %}badge-blue{% elif invoice.status == 'paid' %}badge-green{% elif invoice.status == 'overdue' %}badge-red{% elif invoice.status == 'cancelled' %}badge-gray{% endif %}">
+        {{ invoice.get_status_display }}
+      </span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="detail-grid">
+      <div class="detail-item">
+        <span class="detail-label">Client</span>
+        <span class="detail-value">{{ invoice.client }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Due Date</span>
+        <span class="detail-value">{{ invoice.due_date|date:"M d, Y"|default:"Not set" }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Created</span>
+        <span class="detail-value">{{ invoice.created_at|date:"M d, Y" }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Last Updated</span>
+        <span class="detail-value">{{ invoice.updated_at|date:"M d, Y" }}</span>
+      </div>
+    </div>
+
+    {% if invoice.notes %}
+    <div class="detail-section">
+      <h3 class="detail-section-title">Notes</h3>
+      <p>{{ invoice.notes|linebreaksbr }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Invoice Items</h2>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th class="text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in invoice.items.all %}
+          <tr>
+            <td>{{ item.date|date:"M d, Y" }}</td>
+            <td>{{ item.description }}</td>
+            <td class="text-right">{{ item.amount }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" class="table-empty">No items added yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="totals-section">
+      <div class="totals-row">
+        <span class="totals-label">Total</span>
+        <span class="totals-value">{{ invoice.total_amount }}</span>
+      </div>
+      <div class="totals-row">
+        <span class="totals-label">Paid</span>
+        <span class="totals-value">{{ invoice.paid_amount }}</span>
+      </div>
+      <div class="totals-row totals-row-highlight">
+        <span class="totals-label">Balance Due</span>
+        <span class="totals-value">{{ invoice.balance_due }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Add Item</h2>
+  </div>
+  <div class="card-body">
+    <form method="post" action="{% url 'billing:invoice_add_item' pk=invoice.pk %}" class="form-inline">
+      {% csrf_token %}
+      <div class="form-row">
+        {% for field in item_form %}
+        <div class="form-group">
+          <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+          <ul class="form-errors">
+            {% for error in field.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <div class="form-group form-group-action">
+          <button type="submit" class="btn btn-primary">Add Item</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if invoice.status != 'paid' %}
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Record Payment</h2>
+  </div>
+  <div class="card-body">
+    <form method="post" action="{% url 'billing:invoice_mark_paid' pk=invoice.pk %}" class="form-inline">
+      {% csrf_token %}
+      <div class="form-row">
+        <div class="form-group">
+          <label for="payment-amount" class="form-label">Payment Amount</label>
+          <input type="number" name="amount" id="payment-amount" class="form-input" step="0.01" min="0" value="{{ invoice.balance_due }}" placeholder="Enter amount">
+        </div>
+        <div class="form-group form-group-action">
+          <button type="submit" class="btn btn-success">Mark as Paid</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

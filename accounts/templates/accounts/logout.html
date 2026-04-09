@@ -1,0 +1,17 @@
+{% extends "auth_base.html" %}
+
+{% block title %}Logout - OTCloud{% endblock %}
+
+{% block auth_content %}
+<h1>Log Out</h1>
+<p class="auth-subtitle">Are you sure you want to log out of your account?</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn-primary">Yes, Log Me Out</button>
+</form>
+
+<div class="auth-links">
+    <a href="/">Cancel</a>
+</div>
+{% endblock %}

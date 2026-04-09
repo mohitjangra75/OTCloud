@@ -1,0 +1,54 @@
+{% extends "auth_base.html" %}
+
+{% block title %}Login - OTCloud{% endblock %}
+
+{% block auth_content %}
+<h1>Welcome back</h1>
+<p class="auth-subtitle">Sign in to your account</p>
+
+{% if form.non_field_errors %}
+<ul class="non-field-errors">
+    {% for error in form.non_field_errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="{{ form.mobile_number.id_for_label }}">Mobile Number</label>
+        {{ form.mobile_number }}
+        {% if form.mobile_number.errors %}
+        <ul class="field-errors">
+            {% for error in form.mobile_number.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.password.id_for_label }}">Password</label>
+        {{ form.password }}
+        {% if form.password.errors %}
+        <ul class="field-errors">
+            {% for error in form.password.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+
+    <div class="auth-links" style="text-align: right; margin-top: 0; margin-bottom: 0.5rem;">
+        <a href="{% url 'accounts:forgot_password' %}">Forgot Password?</a>
+    </div>
+
+    <button type="submit" class="btn-primary">Sign In</button>
+</form>
+
+<div class="auth-links">
+    Don't have an account? <a href="{% url 'accounts:register' %}">Register</a>
+</div>
+{% endblock %}

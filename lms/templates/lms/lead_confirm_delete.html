@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Lead - OTCloud{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Delete Lead</h1>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="confirm-delete">
+      <p class="confirm-delete-message">
+        Are you sure you want to delete the lead <strong>{{ lead.name }}</strong>?
+      </p>
+      <p class="text-muted">This action cannot be undone.</p>
+
+      <form method="post" class="form">
+        {% csrf_token %}
+        <div class="form-actions">
+          <button type="submit" class="btn btn-danger">Delete</button>
+          <a href="{% url 'lms:lead_detail' pk=lead.pk %}" class="btn btn-ghost">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Appointment - OTCloud{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Delete Appointment</h1>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="confirm-delete">
+      <p class="confirm-delete-message">
+        Are you sure you want to delete this appointment?
+      </p>
+
+      <dl class="detail-list">
+        <div class="detail-item">
+          <dt>Client</dt>
+          <dd>{{ appointment.client.full_name }}</dd>
+        </div>
+        <div class="detail-item">
+          <dt>Staff</dt>
+          <dd>{{ appointment.staff.get_full_name }}</dd>
+        </div>
+        <div class="detail-item">
+          <dt>Date</dt>
+          <dd>{{ appointment.date|date:"d M Y" }}</dd>
+        </div>
+        <div class="detail-item">
+          <dt>Time</dt>
+          <dd>{{ appointment.start_time|time:"H:i" }} - {{ appointment.end_time|time:"H:i" }}</dd>
+        </div>
+        <div class="detail-item">
+          <dt>Status</dt>
+          <dd><span class="badge badge-{{ appointment.status }}">{{ appointment.get_status_display }}</span></dd>
+        </div>
+      </dl>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-actions">
+          <button type="submit" class="btn btn-danger">Delete</button>
+          <a href="{% url 'appointments:appointment_detail' pk=appointment.pk %}" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

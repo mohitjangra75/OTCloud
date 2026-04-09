@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip3 --version)",
+      "Bash(python -c ':*)",
+      "Bash([ -f \"/Users/mohit/Desktop/cd /OTCloud/$app/services/__init__.py\" ])",
+      "Bash(cp '/Users/mohit/Desktop/cd /OTCloud/__TRACKED_VAR__/services/__init__.py' '/Users/mohit/Desktop/cd /OTCloud/__TRACKED_VAR__/services.py')",
+      "Bash(rm -rf '/Users/mohit/Desktop/cd /OTCloud/__TRACKED_VAR__/services/')",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('analytics/views.py'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\('accounts/views.py', doraise=True\\); py_compile.compile\\('notifications/views.py', doraise=True\\); print\\('Python syntax OK'\\)\")"
+    ]
+  }
+}

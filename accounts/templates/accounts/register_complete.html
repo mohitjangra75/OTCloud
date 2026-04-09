@@ -1,0 +1,46 @@
+{% extends "auth_base.html" %}
+
+{% block title %}Complete Registration - OTCloud{% endblock %}
+
+{% block auth_content %}
+<h1>Set Your Password</h1>
+<p class="auth-subtitle">Welcome, {{ first_name|default:mobile_number }}! Choose a secure password for your account.</p>
+
+{% if form.non_field_errors %}
+<ul class="non-field-errors">
+    {% for error in form.non_field_errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="{{ form.password1.id_for_label }}">Password</label>
+        {{ form.password1 }}
+        {% if form.password1.errors %}
+        <ul class="field-errors">
+            {% for error in form.password1.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.password2.id_for_label }}">Confirm Password</label>
+        {{ form.password2 }}
+        {% if form.password2.errors %}
+        <ul class="field-errors">
+            {% for error in form.password2.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+
+    <button type="submit" class="btn-primary">Create Account</button>
+</form>
+{% endblock %}

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}{{ employee.get_full_name|default:employee.mobile_number }} - OTCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+  .employee-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+  .employee-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+  .badge-role {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+  .badge-admin {
+    background: #ede9fe;
+    color: #7c3aed;
+  }
+  .badge-staff {
+    background: #dbeafe;
+    color: #2563eb;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    padding: 1.25rem;
+  }
+  .stat-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted, #9ca3af);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+  }
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary, #111827);
+  }
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+    font-size: 0.875rem;
+  }
+  .info-row:last-child {
+    border-bottom: none;
+  }
+  .info-label {
+    color: var(--text-secondary, #6b7280);
+    font-weight: 500;
+  }
+  .info-value {
+    color: var(--text-primary, #111827);
+    text-align: right;
+  }
+  .badge-active {
+    color: #16a34a;
+    font-weight: 600;
+  }
+  .badge-inactive {
+    color: #dc2626;
+    font-weight: 600;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="employee-header">
+  <h1>{{ employee.get_full_name|default:employee.mobile_number }}</h1>
+  <span class="badge-role badge-{{ employee.role }}">{{ employee.get_role_display }}</span>
+</div>
+
+<div class="stats-grid">
+  <div class="card stat-card">
+    <div class="stat-label">Monthly Hours</div>
+    <div class="stat-value">{{ month_hours }}</div>
+  </div>
+  <div class="card stat-card">
+    <div class="stat-label">Attendance Days</div>
+    <div class="stat-value">{{ attendance_days }}</div>
+  </div>
+  <div class="card stat-card">
+    <div class="stat-label">Total Sessions</div>
+    <div class="stat-value">{{ total_sessions }}</div>
+  </div>
+  <div class="card stat-card">
+    <div class="stat-label">Upcoming Appointments</div>
+    <div class="stat-value">{{ upcoming_appointments }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h2 style="font-size: 1.125rem; margin-bottom: 1rem;">Employee Information</h2>
+    <div class="info-row">
+      <span class="info-label">Mobile</span>
+      <span class="info-value">{{ employee.mobile_number }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Email</span>
+      <span class="info-value">{{ employee.email|default:"--" }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Role</span>
+      <span class="info-value">
+        <span class="badge-role badge-{{ employee.role }}">{{ employee.get_role_display }}</span>
+      </span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Date Joined</span>
+      <span class="info-value">{{ employee.date_joined|date:"M j, Y" }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Status</span>
+      <span class="info-value">
+        {% if employee.is_active %}
+          <span class="badge-active">Active</span>
+        {% else %}
+          <span class="badge-inactive">Inactive</span>
+        {% endif %}
+      </span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Assigned Clients</span>
+      <span class="info-value">{{ assigned_clients }}</span>
+    </div>
+  </div>
+</div>
+{% endblock %}

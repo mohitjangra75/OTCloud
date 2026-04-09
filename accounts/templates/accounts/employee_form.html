@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Add Employee | OTCloud{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Add Employee</h1>
+  </div>
+</div>
+
+<div class="card" style="max-width: 640px;">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+      <div class="form-errors">
+        {% for error in form.non_field_errors %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="form-group">
+        <label for="id_mobile_number" class="form-label">Mobile Number</label>
+        {{ form.mobile_number }}
+        {% for error in form.mobile_number.errors %}
+          <div class="form-error">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="id_first_name" class="form-label">First Name</label>
+          {{ form.first_name }}
+          {% for error in form.first_name.errors %}
+            <div class="form-error">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="form-group">
+          <label for="id_last_name" class="form-label">Last Name</label>
+          {{ form.last_name }}
+          {% for error in form.last_name.errors %}
+            <div class="form-error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="id_email" class="form-label">Email (optional)</label>
+        {{ form.email }}
+        {% for error in form.email.errors %}
+          <div class="form-error">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="form-group">
+        <label for="id_role" class="form-label">Role</label>
+        {{ form.role }}
+        {% for error in form.role.errors %}
+          <div class="form-error">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="id_password1" class="form-label">Password</label>
+          {{ form.password1 }}
+          {% for error in form.password1.errors %}
+            <div class="form-error">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="form-group">
+          <label for="id_password2" class="form-label">Confirm Password</label>
+          {{ form.password2 }}
+          {% for error in form.password2.errors %}
+            <div class="form-error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Create Employee</button>
+        <a href="{% url 'accounts:employee_list' %}" class="btn btn-outline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
