@@ -127,30 +127,36 @@
 
   /* ---------- Auto-Dismiss Messages ---------- */
   function initMessageAutoDismiss() {
-    var alerts = document.querySelectorAll('.alert');
+    var toasts = document.querySelectorAll('[data-toast]');
 
-    alerts.forEach(function (alert) {
+    toasts.forEach(function (toast, index) {
+      // Stagger entrance
+      toast.style.animationDelay = (index * 0.1) + 's';
+
       // Close button
-      var closeBtn = alert.querySelector('.alert-close');
+      var closeBtn = toast.querySelector('.toast-close');
       if (closeBtn) {
         closeBtn.addEventListener('click', function () {
-          dismissAlert(alert);
+          dismissToast(toast);
         });
       }
 
       // Auto-dismiss after 5 seconds
       setTimeout(function () {
-        dismissAlert(alert);
-      }, 5000);
+        dismissToast(toast);
+      }, 5000 + (index * 500));
     });
   }
 
-  function dismissAlert(alert) {
-    if (!alert || alert.dataset.dismissed) return;
-    alert.dataset.dismissed = 'true';
-    alert.style.animation = 'fadeOut 0.3s ease forwards';
+  function dismissToast(toast) {
+    if (!toast || toast.dataset.dismissed) return;
+    toast.dataset.dismissed = 'true';
+    toast.classList.add('toast-dismissing');
     setTimeout(function () {
-      alert.remove();
+      toast.remove();
+      // Remove container if empty
+      var container = document.getElementById('toastContainer');
+      if (container && !container.children.length) container.remove();
     }, 300);
   }
 

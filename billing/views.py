@@ -6,6 +6,18 @@ from django.shortcuts import get_object_or_404, redirect, render
 from billing.forms import InvoiceForm, InvoiceItemForm
 from billing.models import Invoice
 from billing.services import BillingService
+from clients.models import Client
+
+
+def _get_client_for_user(user):
+    """Find the Client record for a user - by linked user FK or by mobile number."""
+    # First try direct link
+    try:
+        return user.client_profile
+    except Client.DoesNotExist:
+        pass
+    # Fallback: match by mobile number
+    return Client.active_objects.filter(mobile_number=user.mobile_number).first()
 
 
 def _staff_required(view_func):
@@ -25,10 +37,12 @@ def invoice_list(request):
     queryset = Invoice.active_objects.select_related('client').all()
 
     # Clients can only see their own invoices
-    if request.user.role == 'client' and hasattr(request.user, 'client_profile'):
-        queryset = queryset.filter(client=request.user.client_profile)
-    elif request.user.role == 'client':
-        queryset = queryset.none()
+    if request.user.role == 'client':
+        client = _get_client_for_user(request.user)
+        if client:
+            queryset = queryset.filter(client=client)
+        else:
+            queryset = queryset.none()
 
     status_filter = request.GET.get('status')
     if status_filter:
@@ -81,7 +95,8 @@ def invoice_detail(request, pk):
 
     # Clients can only view their own invoices
     if request.user.role == 'client':
-        if not hasattr(request.user, 'client_profile') or invoice.client != request.user.client_profile:
+        client = _get_client_for_user(request.user)
+        if not client or invoice.client != client:
             messages.error(request, 'You do not have permission to view this invoice.')
             return redirect('billing:invoice_list')
 

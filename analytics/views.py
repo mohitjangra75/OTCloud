@@ -72,9 +72,12 @@ def _get_staff_dashboard(user, today, month_start):
 
 
 def _get_client_dashboard(user, today):
+    # Find client by linked user or by mobile number
     try:
         client = user.client_profile
     except Exception:
+        client = Client.active_objects.filter(mobile_number=user.mobile_number).first()
+    if not client:
         return {'client_profile': None}
 
     total_sessions = Appointment.active_objects.filter(

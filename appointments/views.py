@@ -8,6 +8,7 @@ from django.views import View
 from appointments.forms import AppointmentForm, RescheduleForm, ReassignStaffForm
 from appointments.models import Appointment
 from appointments.services import AppointmentService, AppointmentServiceError
+from clients.models import Client
 
 
 # ---------------------------------------------------------------------------
@@ -28,6 +29,15 @@ def _admin_or_staff_required(view_func):
     return wrapper
 
 
+def _get_client_for_user(user):
+    """Find the Client record for a user - by linked user FK or by mobile number."""
+    try:
+        return user.client_profile
+    except Client.DoesNotExist:
+        pass
+    return Client.active_objects.filter(mobile_number=user.mobile_number).first()
+
+
 def _get_appointments_for_user(user):
     """Return the appropriate queryset based on user role."""
     if user.is_superuser or user.role == 'admin':
@@ -35,15 +45,17 @@ def _get_appointments_for_user(user):
     elif user.role == 'staff':
         return AppointmentService.get_staff_appointments(user)
     else:
-        if hasattr(user, 'client_profile'):
-            return AppointmentService.get_client_appointments(user.client_profile)
+        client = _get_client_for_user(user)
+        if client:
+            return AppointmentService.get_client_appointments(client)
         return Appointment.active_objects.none()
 
 
 def _check_client_owns_appointment(user, appointment):
     """Return True if user is client and owns this appointment."""
-    if user.role == 'client' and hasattr(user, 'client_profile'):
-        return appointment.client == user.client_profile
+    if user.role == 'client':
+        client = _get_client_for_user(user)
+        return client and appointment.client == client
     return False
 
 
@@ -94,8 +106,9 @@ class AppointmentDetailView(View):
         )
 
         user = request.user
-        if user.role == 'client' and hasattr(user, 'client_profile'):
-            if appointment.client != user.client_profile:
+        if user.role == 'client':
+            client = _get_client_for_user(user)
+            if not client or appointment.client != client:
                 messages.error(request, "You do not have permission to view this appointment.")
                 return redirect('appointments:appointment_list')
 
