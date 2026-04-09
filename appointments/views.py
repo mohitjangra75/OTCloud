@@ -58,7 +58,7 @@ class AppointmentListView(View):
 
     def get(self, request):
         appointments = _get_appointments_for_user(request.user).select_related(
-            'client', 'staff'
+            'client', 'staff', 'therapy_type'
         )
 
         status_filter = request.GET.get('status', '').strip()
@@ -90,7 +90,7 @@ class AppointmentDetailView(View):
 
     def get(self, request, pk):
         appointment = get_object_or_404(
-            Appointment.active_objects.select_related('client', 'staff'), pk=pk
+            Appointment.active_objects.select_related('client', 'staff', 'therapy_type'), pk=pk
         )
 
         user = request.user

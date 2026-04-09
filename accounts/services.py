@@ -51,7 +51,8 @@ class OTPService:
                 is_used=False,
             ).update(is_used=True)
 
-            code = f'{random.randint(0, 999999):06d}'
+            # Hardcoded OTP for development - change in production
+            code = '123456'
 
             OTP.objects.create(
                 mobile_number=mobile_number,

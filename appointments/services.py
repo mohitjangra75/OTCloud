@@ -21,6 +21,7 @@ class AppointmentService:
         appointment = Appointment(**data)
         if created_by:
             appointment.created_by = created_by
+        appointment.calculate_price()
         appointment.full_clean()
         appointment.save()
         return appointment
@@ -37,7 +38,7 @@ class AppointmentService:
     def reschedule(appointment_id, new_date, new_start_time, new_end_time=None, updated_by=None):
         """
         Reschedule an appointment. Marks old as RESCHEDULED, creates new SCHEDULED.
-        Adds remark noting who initiated the reschedule.
+        Preserves therapy type and duration. Adds remark noting who initiated.
         """
         appointment = AppointmentService.get_appointment(appointment_id)
 
@@ -46,27 +47,22 @@ class AppointmentService:
                 "Only scheduled or rescheduled appointments can be rescheduled."
             )
 
-        # Determine who did this
-        actor = "System"
-        if updated_by:
-            if updated_by.role == 'client':
-                actor = f"Client ({updated_by.get_full_name() or updated_by.mobile_number})"
-            else:
-                actor = f"Staff ({updated_by.get_full_name() or updated_by.mobile_number})"
-
+        actor = _get_actor_label(updated_by)
         remark = f"[Rescheduled by {actor} on {timezone.localtime().strftime('%d %b %Y, %I:%M %p')}]"
 
-        # Mark current appointment as rescheduled
         appointment.status = Appointment.Status.RESCHEDULED
         appointment.notes = (appointment.notes + '\n' if appointment.notes else '') + remark
         if updated_by:
             appointment.updated_by = updated_by
         appointment.save()
 
-        # Create the new appointment
+        # Create the new appointment with same therapy type/duration/price
         new_appointment = Appointment(
             client=appointment.client,
             staff=appointment.staff,
+            therapy_type=appointment.therapy_type,
+            duration_minutes=appointment.duration_minutes,
+            session_price=appointment.session_price,
             date=new_date,
             start_time=new_start_time,
             end_time=new_end_time or appointment.end_time,
@@ -80,10 +76,7 @@ class AppointmentService:
 
     @staticmethod
     def cancel(appointment_id, reason='', cancelled_by=None):
-        """
-        Cancel an appointment. Must be at least APPOINTMENT_CANCEL_HOURS
-        before the appointment start. Adds remark noting who cancelled.
-        """
+        """Cancel an appointment with time restriction and audit trail."""
         appointment = AppointmentService.get_appointment(appointment_id)
 
         if appointment.status not in (Appointment.Status.SCHEDULED, Appointment.Status.RESCHEDULED):
@@ -103,14 +96,7 @@ class AppointmentService:
                 f"Appointments must be cancelled at least {cancel_hours} hours in advance."
             )
 
-        # Determine who did this
-        actor = "System"
-        if cancelled_by:
-            if cancelled_by.role == 'client':
-                actor = f"Client ({cancelled_by.get_full_name() or cancelled_by.mobile_number})"
-            else:
-                actor = f"Staff ({cancelled_by.get_full_name() or cancelled_by.mobile_number})"
-
+        actor = _get_actor_label(cancelled_by)
         cancel_remark = f"Cancelled by {actor} on {timezone.localtime().strftime('%d %b %Y, %I:%M %p')}"
         if reason:
             cancel_remark = f"{reason}\n\n— {cancel_remark}"
@@ -126,7 +112,10 @@ class AppointmentService:
 
     @staticmethod
     def complete_appointment(appointment_id, completed_by=None):
-        """Mark an appointment as completed."""
+        """
+        Mark an appointment as completed.
+        Auto-generates an invoice item for the session.
+        """
         appointment = AppointmentService.get_appointment(appointment_id)
 
         if appointment.status not in (Appointment.Status.SCHEDULED, Appointment.Status.RESCHEDULED):
@@ -138,6 +127,11 @@ class AppointmentService:
         if completed_by:
             appointment.updated_by = completed_by
         appointment.save()
+
+        # Auto-generate invoice if therapy type and price exist
+        if appointment.therapy_type and appointment.session_price > 0:
+            _auto_invoice_session(appointment, completed_by)
+
         return appointment
 
     @staticmethod
@@ -197,3 +191,34 @@ class AppointmentService:
     @staticmethod
     def get_client_appointments(client):
         return Appointment.active_objects.filter(client=client)
+
+
+# ---------------------------------------------------------------------------
+# Helpers (module-level, not part of the class)
+# ---------------------------------------------------------------------------
+
+def _get_actor_label(user):
+    """Return a human-readable label for who performed an action."""
+    if not user:
+        return "System"
+    name = user.get_full_name() or user.mobile_number
+    if user.role == 'client':
+        return f"Client ({name})"
+    return f"Staff ({name})"
+
+
+def _auto_invoice_session(appointment, created_by=None):
+    """Create an invoice item for a completed appointment session."""
+    from billing.services import BillingService
+
+    therapy_name = appointment.therapy_type.name
+    duration_label = f"{appointment.duration_minutes} min"
+    description = f"{therapy_name} ({duration_label}) - {appointment.date.strftime('%d %b %Y')}"
+
+    BillingService.append_daily_session(
+        client=appointment.client,
+        appointment=appointment,
+        description=description,
+        amount=appointment.session_price,
+        created_by=created_by,
+    )

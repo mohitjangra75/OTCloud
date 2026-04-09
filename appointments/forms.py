@@ -1,8 +1,7 @@
 from django import forms
-from django.conf import settings
 
 from accounts.models import User
-from appointments.models import Appointment
+from appointments.models import Appointment, TherapyType
 from clients.models import Client
 
 
@@ -22,16 +21,18 @@ class AppointmentForm(forms.ModelForm):
         fields = [
             'client',
             'staff',
+            'therapy_type',
+            'duration_minutes',
             'date',
             'start_time',
             'end_time',
-            'status',
             'notes',
         ]
         widgets = {
             'client': forms.Select(attrs={'class': 'form-select'}),
             'staff': forms.Select(attrs={'class': 'form-select'}),
-            'status': forms.Select(attrs={'class': 'form-select'}),
+            'therapy_type': forms.Select(attrs={'class': 'form-select'}),
+            'duration_minutes': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-textarea', 'rows': 3}),
         }
 
@@ -39,6 +40,8 @@ class AppointmentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['client'].queryset = Client.active_objects.all()
         self.fields['staff'].queryset = User.objects.filter(role__in=['staff', 'admin'], is_active=True)
+        self.fields['therapy_type'].queryset = TherapyType.active_objects.all()
+        self.fields['therapy_type'].required = True
 
     def clean(self):
         cleaned_data = super().clean()
@@ -47,6 +50,13 @@ class AppointmentForm(forms.ModelForm):
         if start_time and end_time and start_time >= end_time:
             raise forms.ValidationError("End time must be after start time.")
         return cleaned_data
+
+    def save(self, commit=True):
+        appointment = super().save(commit=False)
+        appointment.calculate_price()
+        if commit:
+            appointment.save()
+        return appointment
 
 
 class RescheduleForm(forms.Form):

@@ -114,6 +114,10 @@
     <span>{{ appointment.date|date:"l, d M Y" }}</span>
     <span class="sep">&middot;</span>
     <span>{{ appointment.start_time|time:"h:i A" }} - {{ appointment.end_time|time:"h:i A" }}</span>
+    {% if appointment.therapy_type %}
+    <span class="sep">&middot;</span>
+    <span>{{ appointment.therapy_type.name }} ({{ appointment.get_duration_minutes_display }})</span>
+    {% endif %}
     <span class="sep">&middot;</span>
     <span>Staff: {{ appointment.staff.get_full_name }}</span>
   </div>
@@ -177,6 +181,20 @@
           <span class="info-label">Staff</span>
           <span class="info-value">{{ appointment.staff.get_full_name }}</span>
         </div>
+        {% if appointment.therapy_type %}
+        <div class="info-item">
+          <span class="info-label">Therapy Type</span>
+          <span class="info-value">{{ appointment.therapy_type.name }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Duration</span>
+          <span class="info-value">{{ appointment.get_duration_minutes_display }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Session Price</span>
+          <span class="info-value" style="font-variant-numeric: tabular-nums; font-weight: 600;">&#8377; {{ appointment.session_price }}</span>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
