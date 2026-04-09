@@ -53,7 +53,6 @@
   .badge-scheduled { background: #dbeafe; color: #1d4ed8; }
   .badge-completed { background: #dcfce7; color: #15803d; }
   .badge-cancelled { background: #fee2e2; color: #b91c1c; }
-  .badge-no_show { background: #fef3c7; color: #92400e; }
   .badge-in_progress { background: #e0e7ff; color: #4338ca; }
   .empty-state-icon {
     margin-bottom: 1rem;
@@ -112,12 +111,14 @@
   <div class="page-header-left">
     <h1 class="page-title">Appointments</h1>
   </div>
+  {% if request.user.role != 'client' %}
   <div class="page-header-right">
     <a href="{% url 'appointments:appointment_create' %}" class="btn btn-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem; vertical-align: -2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       New Appointment
     </a>
   </div>
+  {% endif %}
 </div>
 
 <div class="card">
@@ -153,7 +154,7 @@
             <th>Appointment</th>
             <th>Staff</th>
             <th>Status</th>
-            <th>Actions</th>
+            {% if request.user.role != 'client' %}<th>Actions</th>{% endif %}
           </tr>
         </thead>
         <tbody>
@@ -168,12 +169,14 @@
             <td>
               <span class="badge badge-{{ appointment.status }}">{{ appointment.get_status_display }}</span>
             </td>
+            {% if request.user.role != 'client' %}
             <td>
               <div class="table-actions-cell">
                 <a href="{% url 'appointments:appointment_update' pk=appointment.pk %}" class="btn btn-sm btn-secondary" title="Edit">Edit</a>
                 <a href="{% url 'appointments:appointment_delete' pk=appointment.pk %}" class="btn btn-sm btn-danger" title="Delete">Delete</a>
               </div>
             </td>
+            {% endif %}
           </tr>
           {% endfor %}
         </tbody>
@@ -191,10 +194,12 @@
         <div class="mobile-card-details">
           <span>Staff: {{ appointment.staff.get_full_name }}</span>
         </div>
+        {% if request.user.role != 'client' %}
         <div class="mobile-card-actions">
           <a href="{% url 'appointments:appointment_update' pk=appointment.pk %}" class="btn btn-sm btn-secondary">Edit</a>
           <a href="{% url 'appointments:appointment_delete' pk=appointment.pk %}" class="btn btn-sm btn-danger">Delete</a>
         </div>
+        {% endif %}
       </div>
       {% endfor %}
     </div>

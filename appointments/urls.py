@@ -13,4 +13,5 @@ urlpatterns = [
     path('<uuid:pk>/reschedule/', views.AppointmentRescheduleView.as_view(), name='appointment_reschedule'),
     path('<uuid:pk>/cancel/', views.AppointmentCancelView.as_view(), name='appointment_cancel'),
     path('<uuid:pk>/complete/', views.AppointmentCompleteView.as_view(), name='appointment_complete'),
+    path('<uuid:pk>/reassign/', views.AppointmentReassignView.as_view(), name='appointment_reassign'),
 ]

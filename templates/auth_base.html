@@ -2,194 +2,87 @@
 
 {% block extra_css %}
 <style>
+    /* Remove main-content padding for full-bleed auth layout */
+    .main-content--full {
+        padding: 0 !important;
+        margin: 0 !important;
+        min-height: 100vh !important;
+    }
+    body::before { display: none !important; }
+
     .auth-wrapper {
         display: flex;
+        align-items: center;
+        justify-content: center;
         min-height: 100vh;
-        background: var(--bg);
-    }
-
-    /* Decorative left panel */
-    .auth-panel {
-        display: none;
-        flex: 0 0 45%;
-        background: linear-gradient(135deg, #0f1729 0%, #162032 40%, #0d9488 100%);
+        padding: 1.5rem;
         position: relative;
         overflow: hidden;
-        padding: 3rem;
-        flex-direction: column;
-        justify-content: center;
+
+        /* Warm teal-to-slate gradient */
+        background: linear-gradient(145deg, #0f766e 0%, #0d9488 25%, #14b8a6 50%, #5eead4 75%, #ccfbf1 100%);
     }
 
-    .auth-panel::before {
+    /* Soft radial overlays for depth */
+    .auth-wrapper::before {
         content: '';
         position: absolute;
         inset: 0;
         background:
-            radial-gradient(circle at 20% 80%, rgba(13, 148, 136, 0.3) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(8, 145, 178, 0.2) 0%, transparent 50%),
-            radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 60%);
+            radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.18) 0%, transparent 60%),
+            radial-gradient(ellipse at 80% 80%, rgba(15,23,42,0.12) 0%, transparent 50%);
         pointer-events: none;
     }
 
-    .auth-panel::after {
+    /* Dot texture */
+    .auth-wrapper::after {
         content: '';
         position: absolute;
         inset: 0;
-        background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0);
-        background-size: 40px 40px;
-        pointer-events: none;
-    }
-
-    .auth-panel-content {
-        position: relative;
-        z-index: 1;
-        color: white;
-    }
-
-    .auth-panel-logo {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 2rem;
-        letter-spacing: -0.03em;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .auth-panel-logo-icon {
-        width: 48px;
-        height: 48px;
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(12px);
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .auth-panel-tagline {
-        font-size: 1.75rem;
-        font-weight: 600;
-        line-height: 1.3;
-        margin-bottom: 1rem;
-        letter-spacing: -0.02em;
-        max-width: 400px;
-    }
-
-    .auth-panel-desc {
-        font-size: 1rem;
-        color: rgba(255, 255, 255, 0.65);
-        line-height: 1.7;
-        max-width: 380px;
-    }
-
-    .auth-panel-features {
-        list-style: none;
-        padding: 0;
-        margin-top: 2.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .auth-panel-features li {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        font-size: 0.9375rem;
-        color: rgba(255, 255, 255, 0.8);
-    }
-
-    .auth-panel-features li svg {
-        flex-shrink: 0;
-        color: #5eead4;
-    }
-
-    /* Right side - form area */
-    .auth-form-side {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem 1.5rem;
-        position: relative;
-    }
-
-    .auth-form-side::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 300px;
-        height: 300px;
-        background: radial-gradient(circle, rgba(13,148,136,0.06) 0%, transparent 70%);
+        background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0);
+        background-size: 28px 28px;
         pointer-events: none;
     }
 
     .auth-card {
         width: 100%;
         max-width: 420px;
-        background: var(--bg-card);
-        border-radius: 20px;
+        background: #ffffff;
+        border-radius: 16px;
         box-shadow:
-            0 4px 6px rgba(0, 0, 0, 0.04),
-            0 10px 24px rgba(0, 0, 0, 0.06),
-            0 20px 48px rgba(0, 0, 0, 0.04);
+            0 20px 60px rgba(0,0,0,0.15),
+            0 4px 16px rgba(0,0,0,0.08);
         padding: 2.5rem 2rem;
         position: relative;
-        border: 1px solid var(--border-light);
+        z-index: 1;
     }
 
     .auth-logo {
         text-align: center;
-        font-size: 1.5rem;
+        font-size: 1.625rem;
         font-weight: 700;
-        margin-bottom: 0.25rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-
-    .auth-logo-icon {
-        width: 40px;
-        height: 40px;
-        background: var(--primary-gradient);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        box-shadow: 0 2px 8px rgba(13,148,136,0.3);
-    }
-
-    .auth-logo-text {
-        background: var(--primary-gradient);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: #0d9488;
+        margin-bottom: 1.5rem;
         letter-spacing: -0.03em;
     }
 
     .auth-card h1 {
-        font-size: 1.375rem;
+        font-size: 1.25rem;
         font-weight: 600;
         margin-bottom: 0.25rem;
         text-align: center;
-        letter-spacing: -0.02em;
+        color: #1e293b;
     }
 
     .auth-card .auth-subtitle {
-        color: var(--text-muted);
+        color: #94a3b8;
         text-align: center;
         margin-bottom: 1.75rem;
-        font-size: 0.875rem;
-        line-height: 1.5;
+        font-size: 0.8125rem;
     }
 
     .auth-card .form-group {
-        margin-bottom: 1.25rem;
+        margin-bottom: 1.125rem;
     }
 
     .auth-card label {
@@ -197,37 +90,42 @@
         font-weight: 600;
         font-size: 0.8125rem;
         margin-bottom: 0.375rem;
-        color: var(--text);
-        letter-spacing: 0.01em;
+        color: #374151;
     }
 
+    .label-optional {
+        font-weight: 400;
+        color: #94a3b8;
+        font-size: 0.75rem;
+    }
+
+    .auth-card .form-input,
+    .auth-card .form-select,
     .auth-card .form-control {
         width: 100%;
-        padding: 0.6875rem 0.875rem;
-        border: 1.5px solid var(--border);
-        border-radius: 12px;
+        padding: 0.625rem 0.875rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
         font-size: 0.875rem;
-        font-family: var(--font);
+        font-family: var(--font, 'Space Grotesk', sans-serif);
         transition: all 0.2s ease;
         box-sizing: border-box;
-        background: var(--bg-input);
-        color: var(--text);
+        background: #fff;
+        color: #1e293b;
     }
 
+    .auth-card .form-input:hover,
+    .auth-card .form-select:hover,
     .auth-card .form-control:hover {
         border-color: #cbd5e1;
     }
 
+    .auth-card .form-input:focus,
+    .auth-card .form-select:focus,
     .auth-card .form-control:focus {
         outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
-        border-left: 3px solid var(--primary);
-    }
-
-    .auth-card .form-control.is-invalid {
-        border-color: var(--error);
-        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+        border-color: #0d9488;
+        box-shadow: 0 0 0 3px rgba(13,148,136,0.12);
     }
 
     .auth-card .btn-primary {
@@ -236,86 +134,58 @@
         justify-content: center;
         width: 100%;
         padding: 0.75rem;
-        background: var(--primary-gradient);
+        background: linear-gradient(135deg, #0d9488, #0f766e);
         color: #fff;
         border: none;
-        border-radius: 12px;
+        border-radius: 10px;
         font-size: 0.9375rem;
         font-weight: 600;
-        font-family: var(--font);
+        font-family: var(--font, 'Space Grotesk', sans-serif);
         cursor: pointer;
         transition: all 0.2s ease;
-        margin-top: 1.5rem;
-        box-shadow: 0 2px 8px rgba(13, 148, 136, 0.25);
-        letter-spacing: 0.01em;
+        margin-top: 1.25rem;
+        box-shadow: 0 2px 8px rgba(13,148,136,0.3);
     }
 
     .auth-card .btn-primary:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 16px rgba(13, 148, 136, 0.35);
+        box-shadow: 0 6px 20px rgba(13,148,136,0.35);
     }
 
     .auth-card .btn-primary:active {
-        transform: translateY(0) scale(0.99);
-        box-shadow: 0 1px 4px rgba(13, 148, 136, 0.2);
-    }
-
-    .auth-card .btn-outline {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        padding: 0.75rem;
-        background-color: transparent;
-        color: var(--text);
-        border: 1.5px solid var(--border);
-        border-radius: 12px;
-        font-size: 0.9375rem;
-        font-weight: 600;
-        font-family: var(--font);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        margin-top: 0.75rem;
-    }
-
-    .auth-card .btn-outline:hover {
-        background-color: var(--bg-hover);
-        border-color: #cbd5e1;
-        transform: translateY(-1px);
+        transform: translateY(0);
     }
 
     .auth-card .auth-links {
         text-align: center;
         margin-top: 1.5rem;
         font-size: 0.8125rem;
-        color: var(--text-muted);
+        color: #94a3b8;
     }
 
     .auth-card .auth-links a {
-        color: var(--primary);
+        color: #0d9488;
         text-decoration: none;
         font-weight: 600;
-        transition: color 0.15s ease;
     }
 
     .auth-card .auth-links a:hover {
-        color: var(--primary-hover);
         text-decoration: underline;
     }
 
     .auth-card .field-errors {
         list-style: none;
         padding: 0;
-        margin: 0.375rem 0 0 0;
+        margin: 0.25rem 0 0 0;
         font-size: 0.75rem;
-        color: var(--error);
+        color: #dc2626;
     }
 
     .auth-card .non-field-errors {
-        background: var(--error-light);
+        background: #fef2f2;
         border: 1px solid #fecaca;
-        border-left: 4px solid var(--error);
-        border-radius: 10px;
+        border-left: 3px solid #dc2626;
+        border-radius: 8px;
         padding: 0.75rem 1rem;
         margin-bottom: 1.25rem;
         list-style: none;
@@ -323,46 +193,11 @@
         color: #991b1b;
     }
 
-    .auth-divider {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        margin: 1.5rem 0;
-        color: var(--text-muted);
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-weight: 500;
-    }
-
-    .auth-divider::before,
-    .auth-divider::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: var(--border);
-    }
-
-    /* Desktop: show left panel */
-    @media (min-width: 1024px) {
-        .auth-panel {
-            display: flex;
-        }
-
-        .auth-card {
-            padding: 2.5rem;
-        }
-    }
-
-    /* Mobile adjustments */
     @media (max-width: 480px) {
+        .auth-wrapper { padding: 1rem; }
         .auth-card {
-            padding: 1.75rem 1.25rem;
-            border-radius: 16px;
-        }
-
-        .auth-logo {
-            font-size: 1.25rem;
+            padding: 2rem 1.5rem;
+            border-radius: 14px;
         }
     }
 </style>
@@ -370,59 +205,9 @@
 
 {% block content %}
 <div class="auth-wrapper">
-    <!-- Decorative Left Panel (desktop only) -->
-    <div class="auth-panel">
-        <div class="auth-panel-content">
-            <div class="auth-panel-logo">
-                <div class="auth-panel-logo-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                        <line x1="12" y1="22.08" x2="12" y2="12"/>
-                    </svg>
-                </div>
-                OTCloud
-            </div>
-            <h2 class="auth-panel-tagline">Manage your practice with confidence</h2>
-            <p class="auth-panel-desc">
-                Streamline appointments, track attendance, manage clients, and grow your practice — all from one place.
-            </p>
-            <ul class="auth-panel-features">
-                <li>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Smart appointment scheduling
-                </li>
-                <li>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Real-time attendance tracking
-                </li>
-                <li>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Client management & billing
-                </li>
-                <li>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Secure & accessible anywhere
-                </li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- Form Side -->
-    <div class="auth-form-side">
-        <div class="auth-card">
-            <div class="auth-logo">
-                <div class="auth-logo-icon">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                        <line x1="12" y1="22.08" x2="12" y2="12"/>
-                    </svg>
-                </div>
-                <span class="auth-logo-text">OTCloud</span>
-            </div>
-            {% block auth_content %}{% endblock %}
-        </div>
+    <div class="auth-card">
+        <div class="auth-logo">OTCloud</div>
+        {% block auth_content %}{% endblock %}
     </div>
 </div>
 {% endblock %}

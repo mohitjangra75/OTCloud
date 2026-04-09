@@ -21,9 +21,14 @@ def _staff_required(view_func):
 
 
 @login_required
-@_staff_required
 def invoice_list(request):
     queryset = Invoice.active_objects.select_related('client').all()
+
+    # Clients can only see their own invoices
+    if request.user.role == 'client' and hasattr(request.user, 'client_profile'):
+        queryset = queryset.filter(client=request.user.client_profile)
+    elif request.user.role == 'client':
+        queryset = queryset.none()
 
     status_filter = request.GET.get('status')
     if status_filter:
@@ -40,6 +45,7 @@ def invoice_list(request):
         'page_obj': page,
         'status_choices': Invoice.Status.choices,
         'current_status': status_filter or '',
+        'is_client': request.user.role == 'client',
     })
 
 
@@ -67,17 +73,24 @@ def invoice_create(request):
 
 
 @login_required
-@_staff_required
 def invoice_detail(request, pk):
     invoice = get_object_or_404(
         Invoice.active_objects.select_related('client').prefetch_related('items'),
         pk=pk,
     )
-    item_form = InvoiceItemForm()
+
+    # Clients can only view their own invoices
+    if request.user.role == 'client':
+        if not hasattr(request.user, 'client_profile') or invoice.client != request.user.client_profile:
+            messages.error(request, 'You do not have permission to view this invoice.')
+            return redirect('billing:invoice_list')
+
+    item_form = InvoiceItemForm() if request.user.role != 'client' else None
 
     return render(request, 'billing/invoice_detail.html', {
         'invoice': invoice,
         'item_form': item_form,
+        'is_client': request.user.role == 'client',
     })
 
 

@@ -78,7 +78,6 @@
   .badge-sent { background: #dbeafe; color: #1d4ed8; }
   .badge-paid { background: #dcfce7; color: #15803d; }
   .badge-overdue { background: #fee2e2; color: #b91c1c; }
-  .badge-cancelled { background: #f1f5f9; color: #64748b; }
 
   /* Mobile cards */
   .mobile-cards { display: none; }
@@ -137,12 +136,14 @@
   <div class="page-header-left">
     <h1 class="page-title">Invoices</h1>
   </div>
+  {% if request.user.role != 'client' %}
   <div class="page-header-right">
     <a href="{% url 'billing:invoice_create' %}" class="btn btn-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem; vertical-align: -2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Create Invoice
     </a>
   </div>
+  {% endif %}
 </div>
 
 <div class="card">
@@ -185,7 +186,7 @@
             <th style="text-align: right;">Paid</th>
             <th>Status</th>
             <th>Due Date</th>
-            <th>Actions</th>
+            {% if request.user.role != 'client' %}<th>Actions</th>{% endif %}
           </tr>
         </thead>
         <tbody>
@@ -201,11 +202,13 @@
               <span class="badge badge-{{ invoice.status }}">{{ invoice.get_status_display }}</span>
             </td>
             <td>{{ invoice.due_date|date:"M d, Y"|default:"--" }}</td>
+            {% if request.user.role != 'client' %}
             <td>
               <div class="table-actions-cell">
                 <a href="{% url 'billing:invoice_update' pk=invoice.pk %}" class="btn btn-sm btn-secondary" title="Edit">Edit</a>
               </div>
             </td>
+            {% endif %}
           </tr>
           {% endfor %}
         </tbody>
@@ -230,9 +233,11 @@
             <span>Paid: {{ invoice.paid_amount }}</span>
           </div>
         </div>
+        {% if request.user.role != 'client' %}
         <div class="mobile-card-actions">
           <a href="{% url 'billing:invoice_update' pk=invoice.pk %}" class="btn btn-sm btn-secondary">Edit</a>
         </div>
+        {% endif %}
       </div>
       {% endfor %}
     </div>

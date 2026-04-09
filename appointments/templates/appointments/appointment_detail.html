@@ -3,35 +3,51 @@
 
 {% block extra_css %}
 <style>
-  .detail-header {
+  .appt-header {
+    margin-bottom: 1.5rem;
+  }
+  .appt-header-top {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1.5rem;
     flex-wrap: wrap;
+    margin-bottom: 0.5rem;
   }
-  .detail-header-info h1 {
+  .appt-header h1 {
     font-size: 1.375rem;
     font-weight: 700;
-    margin: 0 0 0.25rem;
+    margin: 0;
   }
-  .detail-header-meta {
+  .appt-header-meta {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
     font-size: 0.8125rem;
     color: var(--text-secondary, #64748b);
   }
-  .detail-actions {
+  .appt-header-meta .sep { color: var(--text-muted, #94a3b8); }
+
+  /* Action bar */
+  .action-bar {
     display: flex;
-    gap: 0.5rem;
     flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--bg, #f8fafc);
+    border-radius: var(--radius-lg, 12px);
+    border: 1px solid var(--border-light, #f1f5f9);
+    margin-bottom: 1.5rem;
   }
+  .action-bar .btn { font-size: 0.8125rem; }
+
+  /* Detail grid */
   .detail-grid {
     display: grid;
     grid-template-columns: 1fr;
     gap: 1rem;
+    margin-bottom: 1.5rem;
   }
   .info-grid {
     display: grid;
@@ -55,49 +71,88 @@
     font-weight: 500;
     color: var(--text, #1e293b);
   }
-  .cancel-link {
+
+  /* Status badges */
+  .badge-scheduled { background: #dbeafe; color: #1d4ed8; }
+  .badge-completed { background: #dcfce7; color: #15803d; }
+  .badge-cancelled { background: #fee2e2; color: #b91c1c; }
+  .badge-rescheduled { background: #fef3c7; color: #92400e; }
+
+  /* Activity log */
+  .activity-note {
+    padding: 0.75rem 1rem;
+    background: var(--bg, #f8fafc);
+    border-radius: var(--radius, 8px);
+    border-left: 3px solid var(--text-muted, #94a3b8);
     font-size: 0.8125rem;
-    color: var(--text-muted, #94a3b8);
-    text-decoration: none;
+    color: var(--text-secondary, #64748b);
+    line-height: 1.6;
+    white-space: pre-line;
   }
-  .cancel-link:hover {
-    color: var(--error, #dc2626);
-    text-decoration: underline;
-  }
+
   @media (min-width: 768px) {
-    .detail-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
+    .detail-grid { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 640px) {
-    .detail-actions {
-      width: 100%;
-    }
-    .detail-actions .btn {
-      flex: 1;
-    }
-    .info-grid {
-      grid-template-columns: 1fr;
-    }
+    .action-bar { flex-direction: column; }
+    .action-bar .btn { width: 100%; justify-content: center; }
+    .info-grid { grid-template-columns: 1fr; }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Header with status badge + actions -->
-<div class="detail-header">
-  <div class="detail-actions">
-    {% if appointment.status == 'scheduled' or appointment.status == 'rescheduled' %}
-    <a href="{% url 'appointments:appointment_reschedule' pk=appointment.pk %}" class="btn btn-outline">Reschedule</a>
-    <form method="post" action="{% url 'appointments:appointment_complete' pk=appointment.pk %}" style="display:inline;">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-success">Mark Complete</button>
-    </form>
-    {% endif %}
+<!-- Header -->
+<div class="appt-header">
+  <div class="appt-header-top">
+    <h1>{{ appointment.client.full_name }}</h1>
+    <span class="badge badge-{{ appointment.status }}" style="font-size: 0.8125rem; padding: 0.25rem 0.75rem;">
+      {{ appointment.get_status_display }}
+    </span>
+  </div>
+  <div class="appt-header-meta">
+    <span>{{ appointment.date|date:"l, d M Y" }}</span>
+    <span class="sep">&middot;</span>
+    <span>{{ appointment.start_time|time:"h:i A" }} - {{ appointment.end_time|time:"h:i A" }}</span>
+    <span class="sep">&middot;</span>
+    <span>Staff: {{ appointment.staff.get_full_name }}</span>
   </div>
 </div>
 
-<!-- Info Cards in grid -->
+<!-- Action Bar - role-based -->
+{% if is_active %}
+<div class="action-bar">
+  {# Both client and staff can reschedule #}
+  <a href="{% url 'appointments:appointment_reschedule' pk=appointment.pk %}" class="btn btn-outline">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Reschedule
+  </a>
+
+  {# Both client and staff can cancel #}
+  <a href="{% url 'appointments:appointment_cancel' pk=appointment.pk %}" class="btn btn-danger">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    Cancel
+  </a>
+
+  {% if is_staff_or_admin %}
+  {# Staff-only actions #}
+  <form method="post" action="{% url 'appointments:appointment_complete' pk=appointment.pk %}" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-success">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Mark Complete
+    </button>
+  </form>
+
+  <a href="{% url 'appointments:appointment_reassign' pk=appointment.pk %}" class="btn btn-secondary">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+    Reassign Staff
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Info Cards -->
 <div class="detail-grid">
   <!-- Appointment Info -->
   <div class="card">
@@ -106,7 +161,7 @@
       <div class="info-grid">
         <div class="info-item">
           <span class="info-label">Date</span>
-          <span class="info-value">{{ appointment.date|date:"d M Y" }}</span>
+          <span class="info-value">{{ appointment.date|date:"l, d M Y" }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">Time</span>
@@ -114,11 +169,13 @@
         </div>
         <div class="info-item">
           <span class="info-label">Status</span>
-          <span class="info-value">{{ appointment.get_status_display }}</span></span>
+          <span class="info-value">
+            <span class="badge badge-{{ appointment.status }}">{{ appointment.get_status_display }}</span>
+          </span>
         </div>
         <div class="info-item">
-          <span class="info-label">Notes</span>
-          <span class="info-value">{{ appointment.notes|default:"No notes" }}</span>
+          <span class="info-label">Staff</span>
+          <span class="info-value">{{ appointment.staff.get_full_name }}</span>
         </div>
       </div>
     </div>
@@ -131,7 +188,13 @@
       <div class="info-grid">
         <div class="info-item">
           <span class="info-label">Name</span>
-          <span class="info-value"><a href="{% url 'clients:client_detail' pk=appointment.client.pk %}" class="link-primary">{{ appointment.client.full_name }}</a></span>
+          <span class="info-value">
+            {% if is_staff_or_admin %}
+            <a href="{% url 'clients:client_detail' pk=appointment.client.pk %}" class="link-primary">{{ appointment.client.full_name }}</a>
+            {% else %}
+            {{ appointment.client.full_name }}
+            {% endif %}
+          </span>
         </div>
         <div class="info-item">
           <span class="info-label">Mobile</span>
@@ -144,38 +207,27 @@
       </div>
     </div>
   </div>
-
-  <!-- Staff Info -->
-  <div class="card">
-    <div class="card-header"><h3>Staff</h3></div>
-    <div class="card-body">
-      <div class="info-grid">
-        <div class="info-item">
-          <span class="info-label">Name</span>
-          <span class="info-value">{{ appointment.staff.get_full_name }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Email</span>
-          <span class="info-value">{{ appointment.staff.email|default:"Not provided" }}</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Cancellation reason if cancelled -->
-  {% if appointment.status == 'cancelled' and appointment.cancellation_reason %}
-  <div class="card">
-    <div class="card-header"><h3>Cancellation Reason</h3></div>
-    <div class="card-body">
-      <p>{{ appointment.cancellation_reason|linebreaksbr }}</p>
-    </div>
-  </div>
-  {% endif %}
 </div>
 
-{% if appointment.status == 'scheduled' or appointment.status == 'rescheduled' %}
-<div style="margin-top: 1.5rem; text-align: center;">
-  <a href="{% url 'appointments:appointment_cancel' pk=appointment.pk %}" class="btn btn-danger">Cancel Appointment</a>
+<!-- Notes / Activity -->
+{% if appointment.notes %}
+<div class="card" style="margin-bottom: 1rem;">
+  <div class="card-header"><h3>Notes & Activity</h3></div>
+  <div class="card-body">
+    <div class="activity-note">{{ appointment.notes }}</div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Cancellation Reason -->
+{% if appointment.status == 'cancelled' and appointment.cancellation_reason %}
+<div class="card" style="margin-bottom: 1rem;">
+  <div class="card-header"><h3>Cancellation Details</h3></div>
+  <div class="card-body">
+    <div class="activity-note" style="border-left-color: var(--error, #dc2626);">
+      {{ appointment.cancellation_reason }}
+    </div>
+  </div>
 </div>
 {% endif %}
 {% endblock %}

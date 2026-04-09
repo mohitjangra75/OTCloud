@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from appointments.forms import AppointmentForm, RescheduleForm
+from appointments.forms import AppointmentForm, RescheduleForm, ReassignStaffForm
 from appointments.models import Appointment
 from appointments.services import AppointmentService, AppointmentServiceError
 
@@ -35,10 +35,16 @@ def _get_appointments_for_user(user):
     elif user.role == 'staff':
         return AppointmentService.get_staff_appointments(user)
     else:
-        # Client user
         if hasattr(user, 'client_profile'):
             return AppointmentService.get_client_appointments(user.client_profile)
         return Appointment.active_objects.none()
+
+
+def _check_client_owns_appointment(user, appointment):
+    """Return True if user is client and owns this appointment."""
+    if user.role == 'client' and hasattr(user, 'client_profile'):
+        return appointment.client == user.client_profile
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -55,17 +61,15 @@ class AppointmentListView(View):
             'client', 'staff'
         )
 
-        # Optional status filter - validate against valid choices
         status_filter = request.GET.get('status', '').strip()
         valid_statuses = [choice[0] for choice in Appointment.Status.choices]
         if status_filter and status_filter in valid_statuses:
             appointments = appointments.filter(status=status_filter)
         elif status_filter:
-            status_filter = ''  # reset invalid filter
+            status_filter = ''
 
         paginator = Paginator(appointments, self.paginate_by)
-        page_number = request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
+        page_obj = paginator.get_page(request.GET.get('page'))
 
         context = {
             'page_obj': page_obj,
@@ -85,9 +89,10 @@ class AppointmentDetailView(View):
     template_name = 'appointments/appointment_detail.html'
 
     def get(self, request, pk):
-        appointment = get_object_or_404(Appointment.active_objects, pk=pk)
+        appointment = get_object_or_404(
+            Appointment.active_objects.select_related('client', 'staff'), pk=pk
+        )
 
-        # Clients can only see their own appointments
         user = request.user
         if user.role == 'client' and hasattr(user, 'client_profile'):
             if appointment.client != user.client_profile:
@@ -95,10 +100,16 @@ class AppointmentDetailView(View):
                 return redirect('appointments:appointment_list')
 
         session_count = AppointmentService.get_client_sessions_count(appointment.client_id)
+        is_active = appointment.status in (
+            Appointment.Status.SCHEDULED, Appointment.Status.RESCHEDULED
+        )
 
         context = {
             'appointment': appointment,
             'session_count': session_count,
+            'is_active': is_active,
+            'is_client': user.role == 'client',
+            'is_staff_or_admin': user.role in ('staff', 'admin') or user.is_superuser,
         }
         return render(request, self.template_name, context)
 
@@ -180,15 +191,26 @@ class AppointmentDeleteView(View):
 
 
 # ---------------------------------------------------------------------------
-# Reschedule
+# Reschedule (both client and staff)
 # ---------------------------------------------------------------------------
 
-@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+@method_decorator([login_required], name='dispatch')
 class AppointmentRescheduleView(View):
     template_name = 'appointments/reschedule.html'
 
+    def _check_permission(self, request, appointment):
+        user = request.user
+        if user.role == 'client':
+            if not _check_client_owns_appointment(user, appointment):
+                messages.error(request, "You do not have permission to reschedule this appointment.")
+                return redirect('appointments:appointment_list')
+        return None
+
     def get(self, request, pk):
         appointment = get_object_or_404(Appointment.active_objects, pk=pk)
+        denied = self._check_permission(request, appointment)
+        if denied:
+            return denied
         form = RescheduleForm(initial={
             'new_date': appointment.date,
             'new_start_time': appointment.start_time,
@@ -201,6 +223,9 @@ class AppointmentRescheduleView(View):
 
     def post(self, request, pk):
         appointment = get_object_or_404(Appointment.active_objects, pk=pk)
+        denied = self._check_permission(request, appointment)
+        if denied:
+            return denied
         form = RescheduleForm(request.POST)
         if form.is_valid():
             try:
@@ -222,34 +247,33 @@ class AppointmentRescheduleView(View):
 
 
 # ---------------------------------------------------------------------------
-# Cancel
+# Cancel (both client and staff)
 # ---------------------------------------------------------------------------
 
 @method_decorator([login_required], name='dispatch')
 class AppointmentCancelView(View):
     template_name = 'appointments/appointment_cancel.html'
 
-    def get(self, request, pk):
-        appointment = get_object_or_404(Appointment.active_objects, pk=pk)
-
-        # Clients can only cancel their own
+    def _check_permission(self, request, appointment):
         user = request.user
-        if user.role == 'client' and hasattr(user, 'client_profile'):
-            if appointment.client != user.client_profile:
+        if user.role == 'client':
+            if not _check_client_owns_appointment(user, appointment):
                 messages.error(request, "You do not have permission to cancel this appointment.")
                 return redirect('appointments:appointment_list')
+        return None
 
+    def get(self, request, pk):
+        appointment = get_object_or_404(Appointment.active_objects, pk=pk)
+        denied = self._check_permission(request, appointment)
+        if denied:
+            return denied
         return render(request, self.template_name, {'appointment': appointment})
 
     def post(self, request, pk):
         appointment = get_object_or_404(Appointment.active_objects, pk=pk)
-
-        # Clients can only cancel their own
-        user = request.user
-        if user.role == 'client' and hasattr(user, 'client_profile'):
-            if appointment.client != user.client_profile:
-                messages.error(request, "You do not have permission to cancel this appointment.")
-                return redirect('appointments:appointment_list')
+        denied = self._check_permission(request, appointment)
+        if denied:
+            return denied
 
         reason = request.POST.get('reason', '').strip()
         try:
@@ -265,7 +289,7 @@ class AppointmentCancelView(View):
 
 
 # ---------------------------------------------------------------------------
-# Complete
+# Complete (staff/admin only)
 # ---------------------------------------------------------------------------
 
 @method_decorator([login_required, _admin_or_staff_required], name='dispatch')
@@ -279,3 +303,39 @@ class AppointmentCompleteView(View):
         except AppointmentServiceError as exc:
             messages.error(request, str(exc))
         return redirect('appointments:appointment_detail', pk=pk)
+
+
+# ---------------------------------------------------------------------------
+# Reassign Staff (staff/admin only)
+# ---------------------------------------------------------------------------
+
+@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+class AppointmentReassignView(View):
+    template_name = 'appointments/reassign.html'
+
+    def get(self, request, pk):
+        appointment = get_object_or_404(Appointment.active_objects, pk=pk)
+        form = ReassignStaffForm(initial={'new_staff': appointment.staff})
+        return render(request, self.template_name, {
+            'form': form,
+            'appointment': appointment,
+        })
+
+    def post(self, request, pk):
+        appointment = get_object_or_404(Appointment.active_objects, pk=pk)
+        form = ReassignStaffForm(request.POST)
+        if form.is_valid():
+            try:
+                AppointmentService.reassign_staff(
+                    appointment_id=pk,
+                    new_staff=form.cleaned_data['new_staff'],
+                    reassigned_by=request.user,
+                )
+                messages.success(request, "Appointment reassigned successfully.")
+                return redirect('appointments:appointment_detail', pk=pk)
+            except AppointmentServiceError as exc:
+                messages.error(request, str(exc))
+        return render(request, self.template_name, {
+            'form': form,
+            'appointment': appointment,
+        })

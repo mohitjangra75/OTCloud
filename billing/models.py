@@ -8,7 +8,6 @@ class Invoice(CoreModel):
         SENT = 'sent', 'Sent'
         PAID = 'paid', 'Paid'
         OVERDUE = 'overdue', 'Overdue'
-        CANCELLED = 'cancelled', 'Cancelled'
 
     client = models.ForeignKey(
         'clients.Client',

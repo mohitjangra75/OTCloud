@@ -9,7 +9,6 @@ class Appointment(CoreModel):
         COMPLETED = 'completed', 'Completed'
         CANCELLED = 'cancelled', 'Cancelled'
         RESCHEDULED = 'rescheduled', 'Rescheduled'
-        NO_SHOW = 'no_show', 'No Show'
 
     client = models.ForeignKey(
         'clients.Client',

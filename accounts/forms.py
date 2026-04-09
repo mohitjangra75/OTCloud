@@ -11,6 +11,13 @@ mobile_validator = RegexValidator(
 )
 
 
+def clean_mobile_input(value):
+    """Strip dashes, spaces, and non-digit chars (except leading +)."""
+    if value.startswith('+'):
+        return '+' + ''.join(c for c in value[1:] if c.isdigit())
+    return ''.join(c for c in value if c.isdigit())
+
+
 class RegistrationForm(forms.Form):
     """Step 1: Collect mobile number, basic profile info, and send OTP."""
     first_name = forms.CharField(
@@ -56,7 +63,7 @@ class RegistrationForm(forms.Form):
     )
 
     def clean_mobile_number(self):
-        mobile = self.cleaned_data['mobile_number']
+        mobile = clean_mobile_input(self.cleaned_data['mobile_number'])
         if User.objects.filter(mobile_number=mobile).exists():
             raise forms.ValidationError('An account with this mobile number already exists.')
         return mobile
@@ -129,6 +136,9 @@ class LoginForm(forms.Form):
         }),
     )
 
+    def clean_mobile_number(self):
+        return clean_mobile_input(self.cleaned_data['mobile_number'])
+
 
 class ProfileForm(forms.ModelForm):
     """Edit user profile."""
@@ -196,7 +206,7 @@ class EmployeeCreateForm(forms.ModelForm):
         }
 
     def clean_mobile_number(self):
-        mobile = self.cleaned_data['mobile_number']
+        mobile = clean_mobile_input(self.cleaned_data['mobile_number'])
         if User.objects.filter(mobile_number=mobile).exists():
             raise forms.ValidationError('An account with this mobile number already exists.')
         return mobile
@@ -232,7 +242,7 @@ class ForgotPasswordForm(forms.Form):
     )
 
     def clean_mobile_number(self):
-        mobile = self.cleaned_data['mobile_number']
+        mobile = clean_mobile_input(self.cleaned_data['mobile_number'])
         if not User.objects.filter(mobile_number=mobile).exists():
             raise forms.ValidationError('No account found with this mobile number.')
         return mobile

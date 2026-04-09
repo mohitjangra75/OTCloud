@@ -16,7 +16,7 @@
   <div class="card-header">
     <div class="card-header-left">
       <h2 class="card-title">Invoice {{ invoice.invoice_number }}</h2>
-      <span class="badge {% if invoice.status == 'draft' %}badge-gray{% elif invoice.status == 'sent' %}badge-blue{% elif invoice.status == 'paid' %}badge-green{% elif invoice.status == 'overdue' %}badge-red{% elif invoice.status == 'cancelled' %}badge-gray{% endif %}">
+      <span class="badge {% if invoice.status == 'draft' %}badge-gray{% elif invoice.status == 'sent' %}badge-blue{% elif invoice.status == 'paid' %}badge-green{% elif invoice.status == 'overdue' %}badge-red{% endif %}">
         {{ invoice.get_status_display }}
       </span>
     </div>

@@ -67,3 +67,11 @@ class RescheduleForm(forms.Form):
         if start_time and end_time and start_time >= end_time:
             raise forms.ValidationError("End time must be after start time.")
         return cleaned_data
+
+
+class ReassignStaffForm(forms.Form):
+    new_staff = forms.ModelChoiceField(
+        queryset=User.objects.filter(role__in=['staff', 'admin'], is_active=True),
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Assign to',
+    )

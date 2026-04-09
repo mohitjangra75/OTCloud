@@ -36,8 +36,8 @@ class AppointmentService:
     @staticmethod
     def reschedule(appointment_id, new_date, new_start_time, new_end_time=None, updated_by=None):
         """
-        Reschedule an appointment to a new date/time.
-        The old status is changed to RESCHEDULED and a new appointment is created.
+        Reschedule an appointment. Marks old as RESCHEDULED, creates new SCHEDULED.
+        Adds remark noting who initiated the reschedule.
         """
         appointment = AppointmentService.get_appointment(appointment_id)
 
@@ -46,8 +46,19 @@ class AppointmentService:
                 "Only scheduled or rescheduled appointments can be rescheduled."
             )
 
+        # Determine who did this
+        actor = "System"
+        if updated_by:
+            if updated_by.role == 'client':
+                actor = f"Client ({updated_by.get_full_name() or updated_by.mobile_number})"
+            else:
+                actor = f"Staff ({updated_by.get_full_name() or updated_by.mobile_number})"
+
+        remark = f"[Rescheduled by {actor} on {timezone.localtime().strftime('%d %b %Y, %I:%M %p')}]"
+
         # Mark current appointment as rescheduled
         appointment.status = Appointment.Status.RESCHEDULED
+        appointment.notes = (appointment.notes + '\n' if appointment.notes else '') + remark
         if updated_by:
             appointment.updated_by = updated_by
         appointment.save()
@@ -60,7 +71,7 @@ class AppointmentService:
             start_time=new_start_time,
             end_time=new_end_time or appointment.end_time,
             status=Appointment.Status.SCHEDULED,
-            notes=appointment.notes,
+            notes=f"Rescheduled from {appointment.date.strftime('%d %b %Y')}",
             created_by=updated_by,
         )
         new_appointment.full_clean()
@@ -71,7 +82,7 @@ class AppointmentService:
     def cancel(appointment_id, reason='', cancelled_by=None):
         """
         Cancel an appointment. Must be at least APPOINTMENT_CANCEL_HOURS
-        before the appointment start.
+        before the appointment start. Adds remark noting who cancelled.
         """
         appointment = AppointmentService.get_appointment(appointment_id)
 
@@ -92,8 +103,22 @@ class AppointmentService:
                 f"Appointments must be cancelled at least {cancel_hours} hours in advance."
             )
 
+        # Determine who did this
+        actor = "System"
+        if cancelled_by:
+            if cancelled_by.role == 'client':
+                actor = f"Client ({cancelled_by.get_full_name() or cancelled_by.mobile_number})"
+            else:
+                actor = f"Staff ({cancelled_by.get_full_name() or cancelled_by.mobile_number})"
+
+        cancel_remark = f"Cancelled by {actor} on {timezone.localtime().strftime('%d %b %Y, %I:%M %p')}"
+        if reason:
+            cancel_remark = f"{reason}\n\n— {cancel_remark}"
+        else:
+            cancel_remark = f"No reason provided.\n\n— {cancel_remark}"
+
         appointment.status = Appointment.Status.CANCELLED
-        appointment.cancellation_reason = reason
+        appointment.cancellation_reason = cancel_remark
         if cancelled_by:
             appointment.updated_by = cancelled_by
         appointment.save()
@@ -116,11 +141,28 @@ class AppointmentService:
         return appointment
 
     @staticmethod
+    def reassign_staff(appointment_id, new_staff, reassigned_by=None):
+        """Reassign an appointment to a different staff member."""
+        appointment = AppointmentService.get_appointment(appointment_id)
+
+        if appointment.status not in (Appointment.Status.SCHEDULED, Appointment.Status.RESCHEDULED):
+            raise AppointmentServiceError(
+                "Only scheduled or rescheduled appointments can be reassigned."
+            )
+
+        old_staff_name = appointment.staff.get_full_name() or appointment.staff.mobile_number
+        new_staff_name = new_staff.get_full_name() or new_staff.mobile_number
+
+        remark = f"[Reassigned from {old_staff_name} to {new_staff_name} on {timezone.localtime().strftime('%d %b %Y, %I:%M %p')}]"
+        appointment.staff = new_staff
+        appointment.notes = (appointment.notes + '\n' if appointment.notes else '') + remark
+        if reassigned_by:
+            appointment.updated_by = reassigned_by
+        appointment.save()
+        return appointment
+
+    @staticmethod
     def get_upcoming(user):
-        """
-        Return upcoming scheduled appointments for a user.
-        Staff see their own appointments; clients see theirs.
-        """
         now = timezone.now()
         today = now.date()
         current_time = now.time()
@@ -133,16 +175,12 @@ class AppointmentService:
 
         if hasattr(user, 'client_profile'):
             return base_qs.filter(client=user.client_profile)
-
         if user.role == 'staff':
             return base_qs.filter(staff=user)
-
-        # Admin sees all
         return base_qs
 
     @staticmethod
     def get_client_sessions_count(client_id):
-        """Return the count of completed appointments for a client."""
         return Appointment.active_objects.filter(
             client_id=client_id,
             status=Appointment.Status.COMPLETED,
@@ -150,15 +188,12 @@ class AppointmentService:
 
     @staticmethod
     def get_all_appointments():
-        """Return all non-deleted appointments."""
         return Appointment.active_objects.all()
 
     @staticmethod
     def get_staff_appointments(staff_user):
-        """Return all non-deleted appointments for a specific staff member."""
         return Appointment.active_objects.filter(staff=staff_user)
 
     @staticmethod
     def get_client_appointments(client):
-        """Return all non-deleted appointments for a specific client."""
         return Appointment.active_objects.filter(client=client)

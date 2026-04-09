@@ -239,20 +239,10 @@
 
   /* ---------- Form Enhancements ---------- */
   function initFormEnhancements() {
-    // Auto-format phone number inputs
+    // Keep phone number inputs as digits only (no dashes or formatting)
     document.querySelectorAll('input[type="tel"], input[name*="phone"], input[name*="mobile"]').forEach(function (input) {
       input.addEventListener('input', function () {
-        var value = this.value.replace(/\D/g, '');
-        if (value.length > 10) value = value.slice(0, 10);
-
-        // Format as XXX-XXX-XXXX for display
-        if (value.length >= 7) {
-          this.value = value.slice(0, 3) + '-' + value.slice(3, 6) + '-' + value.slice(6);
-        } else if (value.length >= 4) {
-          this.value = value.slice(0, 3) + '-' + value.slice(3);
-        } else {
-          this.value = value;
-        }
+        this.value = this.value.replace(/[^\d+]/g, '');
       });
     });
 
