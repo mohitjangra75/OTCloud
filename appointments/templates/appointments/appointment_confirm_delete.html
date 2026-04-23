@@ -2,51 +2,162 @@
 
 {% block title %}Delete Appointment - OTCloud{% endblock %}
 
+{% block extra_css %}
+<style>
+  .delete-card {
+    max-width: 560px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: var(--radius-lg, 12px);
+    overflow: hidden;
+  }
+  .delete-head {
+    background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 100%);
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #fecaca;
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+  }
+  .delete-icon {
+    flex-shrink: 0;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: #fff;
+    color: #b91c1c;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.15);
+  }
+  .delete-title { font-size: 1.05rem; font-weight: 700; color: #7f1d1d; margin: 0; }
+  .delete-lede  { font-size: 0.85rem; color: #991b1b; margin-top: 0.15rem; }
+
+  .delete-body { padding: 1.25rem 1.5rem; }
+  .delete-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem 1.25rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+  }
+  .delete-summary .item { display: flex; flex-direction: column; gap: 0.15rem; }
+  .delete-summary .label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted, #94a3b8);
+  }
+  .delete-summary .value {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary, #111827);
+  }
+  .delete-summary .value.emph { font-weight: 700; }
+
+  .delete-warn {
+    display: flex;
+    gap: 0.625rem;
+    padding: 0.75rem 0.875rem;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    font-size: 0.8125rem;
+    color: #854d0e;
+    margin-bottom: 1rem;
+    line-height: 1.45;
+  }
+  .delete-warn svg { flex-shrink: 0; margin-top: 2px; }
+
+  .delete-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+
+  @media (max-width: 640px) {
+    .delete-head { padding: 1rem; }
+    .delete-body { padding: 1rem; }
+    .delete-summary { grid-template-columns: 1fr; gap: 0.75rem; }
+    .delete-actions { flex-direction: column-reverse; }
+    .delete-actions .btn { width: 100%; justify-content: center; }
+  }
+
+  .badge-scheduled   { background: #dbeafe; color: #1d4ed8; }
+  .badge-completed   { background: #d1fae5; color: #065f46; }
+  .badge-cancelled   { background: #ffe4e6; color: #9f1239; }
+  .badge-rescheduled { background: #fef3c7; color: #854d0e; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
-  <div class="page-header-left">
-    <h1 class="page-title">Delete Appointment</h1>
-  </div>
-</div>
-
-<div class="card">
-  <div class="card-body">
-    <div class="confirm-delete">
-      <p class="confirm-delete-message">
-        Are you sure you want to delete this appointment?
-      </p>
-
-      <dl class="detail-list">
-        <div class="detail-item">
-          <dt>Client</dt>
-          <dd>{{ appointment.client.full_name }}</dd>
-        </div>
-        <div class="detail-item">
-          <dt>Staff</dt>
-          <dd>{{ appointment.staff.get_full_name }}</dd>
-        </div>
-        <div class="detail-item">
-          <dt>Date</dt>
-          <dd>{{ appointment.date|date:"d M Y" }}</dd>
-        </div>
-        <div class="detail-item">
-          <dt>Time</dt>
-          <dd>{{ appointment.start_time|time:"H:i" }} - {{ appointment.end_time|time:"H:i" }}</dd>
-        </div>
-        <div class="detail-item">
-          <dt>Status</dt>
-          <dd><span class="badge badge-{{ appointment.status }}">{{ appointment.get_status_display }}</span></dd>
-        </div>
-      </dl>
-
-      <form method="post">
-        {% csrf_token %}
-        <div class="form-actions">
-          <button type="submit" class="btn btn-danger">Delete</button>
-          <a href="{% url 'appointments:appointment_detail' pk=appointment.pk %}" class="btn btn-outline">Cancel</a>
-        </div>
-      </form>
+<div class="delete-card">
+  <div class="delete-head">
+    <span class="delete-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        <path d="M10 11v6"/><path d="M14 11v6"/>
+        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+      </svg>
+    </span>
+    <div>
+      <h1 class="delete-title">Delete this appointment?</h1>
+      <div class="delete-lede">This moves it out of active lists. You can restore it later from admin if needed.</div>
     </div>
+  </div>
+
+  <div class="delete-body">
+    <div class="delete-summary">
+      <div class="item">
+        <span class="label">Client</span>
+        <span class="value emph">{{ appointment.client.full_name }}</span>
+      </div>
+      <div class="item">
+        <span class="label">Staff</span>
+        <span class="value">{{ appointment.staff.get_full_name|default:appointment.staff.mobile_number }}</span>
+      </div>
+      <div class="item">
+        <span class="label">Date</span>
+        <span class="value">{{ appointment.date|date:"l, d M Y" }}</span>
+      </div>
+      <div class="item">
+        <span class="label">Time</span>
+        <span class="value">{{ appointment.start_time|time:"h:i A" }} – {{ appointment.end_time|time:"h:i A" }}</span>
+      </div>
+      {% if appointment.therapy_type %}
+      <div class="item">
+        <span class="label">Therapy</span>
+        <span class="value">{{ appointment.therapy_type.name }} · {{ appointment.therapy_type.duration }} min</span>
+      </div>
+      {% endif %}
+      <div class="item">
+        <span class="label">Status</span>
+        <span class="value"><span class="badge badge-{{ appointment.status }}">{{ appointment.get_status_display }}</span></span>
+      </div>
+    </div>
+
+    <div class="delete-warn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span>If the client should just be marked absent or the session cancelled, prefer those actions from the detail page — they preserve billing history.</span>
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="delete-actions">
+        <a href="{% url 'appointments:appointment_detail' pk=appointment.pk %}" class="btn btn-outline">Keep appointment</a>
+        <button type="submit" class="btn btn-danger">Yes, delete</button>
+      </div>
+    </form>
   </div>
 </div>
 {% endblock %}

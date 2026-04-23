@@ -146,11 +146,11 @@
           <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input type="text" name="q" value="{{ search_query }}" placeholder="Search leads by name or mobile..." class="form-input search-input" aria-label="Search leads">
+          <input type="text" name="q" value="{{ search_query }}" placeholder="Search leads — press Enter..." class="form-input search-input" aria-label="Search leads">
         </div>
         <div class="filter-group">
           <label for="status-filter" class="filter-label">Status</label>
-          <select name="status" id="status-filter" class="form-select">
+          <select name="status" id="status-filter" class="form-select" onchange="this.form.submit()">
             <option value="">All Statuses</option>
             {% for value, label in status_choices %}
             <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
@@ -159,17 +159,18 @@
         </div>
         <div class="filter-group">
           <label for="source-filter" class="filter-label">Source</label>
-          <select name="source" id="source-filter" class="form-select">
+          <select name="source" id="source-filter" class="form-select" onchange="this.form.submit()">
             <option value="">All Sources</option>
             {% for value, label in source_choices %}
             <option value="{{ value }}" {% if current_source == value %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
         </div>
+        {% if search_query or current_status or current_source %}
         <div class="toolbar-actions">
-          <button type="submit" class="btn btn-primary btn-sm">Search</button>
           <a href="{% url 'lms:lead_list' %}" class="btn btn-outline btn-sm">Clear</a>
         </div>
+        {% endif %}
       </div>
     </form>
 

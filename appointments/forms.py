@@ -50,8 +50,18 @@ class AppointmentForm(forms.ModelForm):
         return cleaned_data
 
     def save(self, commit=True):
+        from appointments.services import _staff_is_on_leave
+
         appointment = super().save(commit=False)
         appointment.calculate_price()
+
+        leave_mark = _staff_is_on_leave(appointment.staff, appointment.date)
+        if leave_mark:
+            appointment.needs_reassignment = True
+            appointment.reassignment_reason = (
+                f"Staff is absent on {appointment.date:%d %b} — please reassign."
+            )
+
         if commit:
             appointment.save()
         return appointment
@@ -83,3 +93,15 @@ class ReassignStaffForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'}),
         label='Assign to',
     )
+
+    def __init__(self, *args, exclude_date=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if exclude_date:
+            from attendance.models import AttendanceMark
+            on_leave_ids = AttendanceMark.active_objects.filter(
+                date=exclude_date,
+                status=AttendanceMark.Status.LEAVE,
+            ).values_list('user_id', flat=True)
+            self.fields['new_staff'].queryset = (
+                self.fields['new_staff'].queryset.exclude(id__in=list(on_leave_ids))
+            )

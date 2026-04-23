@@ -65,6 +65,10 @@ class Appointment(CoreModel):
         default=0,
         help_text='Auto-calculated from therapy type',
     )
+    is_absent = models.BooleanField(default=False)
+    is_group = models.BooleanField(default=False)
+    needs_reassignment = models.BooleanField(default=False)
+    reassignment_reason = models.CharField(max_length=255, blank=True)
     notes = models.TextField(blank=True)
     cancellation_reason = models.TextField(blank=True)
 

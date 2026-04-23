@@ -10,7 +10,7 @@
     {% if lead.status != 'converted' %}
     <form method="post" action="{% url 'lms:lead_convert' pk=lead.pk %}" class="inline-form">
       {% csrf_token %}
-      <button type="submit" class="btn btn-success" onclick="return confirm('Convert this lead to a client?')">Convert to Client</button>
+      <button type="submit" class="btn btn-success">Convert to Client</button>
     </form>
     {% endif %}
     <a href="{% url 'lms:lead_update' pk=lead.pk %}" class="btn btn-secondary">Edit</a>

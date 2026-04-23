@@ -125,14 +125,13 @@
           <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input type="text" name="q" value="{{ search_query }}" placeholder="Search clients by name, mobile or email..." class="form-input search-input" aria-label="Search clients">
+          <input type="text" name="q" value="{{ search_query }}" placeholder="Search clients — press Enter..." class="form-input search-input" aria-label="Search clients">
         </div>
+        {% if search_query %}
         <div class="toolbar-actions">
-          <button type="submit" class="btn btn-primary btn-sm">Search</button>
-          {% if search_query %}
           <a href="{% url 'clients:client_list' %}" class="btn btn-outline btn-sm">Clear</a>
-          {% endif %}
         </div>
+        {% endif %}
       </div>
     </form>
 

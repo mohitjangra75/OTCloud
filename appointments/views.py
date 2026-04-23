@@ -1,12 +1,17 @@
+import datetime
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 
+from accounts.models import User
 from appointments.forms import AppointmentForm, RescheduleForm, ReassignStaffForm
-from appointments.models import Appointment
+from appointments.models import Appointment, TherapyType
 from appointments.services import AppointmentService, AppointmentServiceError
 from clients.models import Client
 
@@ -322,13 +327,192 @@ class AppointmentCompleteView(View):
 # Reassign Staff (staff/admin only)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Daily Schedule (grid view)
+# ---------------------------------------------------------------------------
+
+def _parse_date(raw, fallback):
+    if not raw:
+        return fallback
+    try:
+        return datetime.datetime.strptime(raw, '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return fallback
+
+
+@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+class DailyScheduleView(View):
+    """Day-wise grid: staff columns x time-slot rows. Defaults to tomorrow."""
+    template_name = 'appointments/daily_schedule.html'
+
+    def get(self, request):
+        today = timezone.localdate()
+        tomorrow = today + datetime.timedelta(days=1)
+        target_date = _parse_date(request.GET.get('date'), today)
+
+        data = AppointmentService.get_day_schedule(target_date)
+
+        # Build rows for the template: list of { 'time', 'label', 'cells': [appt_or_None] }
+        rows = []
+        for slot_time, label in data['slots']:
+            cells = [data['grid'].get((s.id, slot_time)) for s in data['staff']]
+            rows.append({'time': slot_time, 'label': label, 'cells': cells})
+
+        pending_reassignments = AppointmentService.get_pending_reassignments(target_date)
+
+        # Staff who are on leave on the target date → exclude from reassign dropdown.
+        from attendance.models import AttendanceMark
+        on_leave_ids = set(
+            AttendanceMark.active_objects.filter(
+                date=target_date,
+                status=AttendanceMark.Status.LEAVE,
+            ).values_list('user_id', flat=True)
+        )
+        available_staff = [s for s in data['staff'] if s.id not in on_leave_ids]
+
+        context = {
+            'target_date': target_date,
+            'is_today': target_date == today,
+            'is_tomorrow': target_date == tomorrow,
+            'prev_date': target_date - datetime.timedelta(days=1),
+            'next_date': target_date + datetime.timedelta(days=1),
+            'today': today,
+            'tomorrow': tomorrow,
+            'staff': data['staff'],
+            'available_staff': available_staff,
+            'on_leave_ids': on_leave_ids,
+            'rows': rows,
+            'clients': Client.active_objects.all().order_by('first_name', 'last_name'),
+            'therapy_types': TherapyType.active_objects.all(),
+            'pending_reassignments': pending_reassignments,
+        }
+        return render(request, self.template_name, context)
+
+
+@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+class ScheduleQuickAddView(View):
+    http_method_names = ['post']
+
+    def post(self, request):
+        target_date = _parse_date(request.POST.get('date'), timezone.localdate())
+        raw_time = request.POST.get('start_time', '').strip()
+        try:
+            start_time = datetime.datetime.strptime(raw_time, '%H:%M:%S').time()
+        except ValueError:
+            try:
+                start_time = datetime.datetime.strptime(raw_time, '%H:%M').time()
+            except ValueError:
+                messages.error(request, "Invalid time.")
+                return redirect(f"{reverse('appointments:daily_schedule')}?date={target_date}")
+
+        staff_id = request.POST.get('staff_id')
+        client_id = request.POST.get('client_id')
+        therapy_id = request.POST.get('therapy_type_id')
+        is_group = request.POST.get('is_group') == 'on'
+
+        staff = User.objects.filter(pk=staff_id, is_active=True).first()
+        client = Client.active_objects.filter(pk=client_id).first()
+        therapy_type = TherapyType.active_objects.filter(pk=therapy_id).first()
+
+        if not (staff and client and therapy_type):
+            messages.error(request, "Staff, client and therapy type are required.")
+            return redirect(f"{reverse('appointments:daily_schedule')}?date={target_date}")
+
+        try:
+            AppointmentService.quick_create(
+                client=client,
+                staff=staff,
+                therapy_type=therapy_type,
+                date=target_date,
+                start_time=start_time,
+                created_by=request.user,
+                is_group=is_group,
+                notes=request.POST.get('notes', ''),
+            )
+            messages.success(request, "Appointment added.")
+        except AppointmentServiceError as exc:
+            messages.error(request, str(exc))
+
+        return redirect(f"{reverse('appointments:daily_schedule')}?date={target_date}")
+
+
+@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+class ScheduleCopyDayView(View):
+    http_method_names = ['post']
+
+    def post(self, request):
+        target_date = _parse_date(request.POST.get('target_date'), None)
+        source_date = _parse_date(
+            request.POST.get('source_date'),
+            (target_date - datetime.timedelta(days=1)) if target_date else None,
+        )
+        if not (target_date and source_date):
+            messages.error(request, "Invalid dates for copy.")
+            return redirect('appointments:daily_schedule')
+
+        try:
+            count = AppointmentService.copy_day(source_date, target_date, created_by=request.user)
+            if count:
+                messages.success(request, f"Copied {count} appointments from {source_date:%d %b} to {target_date:%d %b}.")
+            else:
+                messages.info(request, "Nothing new to copy — target day already has those slots.")
+        except Exception as exc:
+            messages.error(request, f"Could not copy schedule: {exc}")
+
+        return redirect(f"{reverse('appointments:daily_schedule')}?date={target_date}")
+
+
+@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+class AppointmentMarkAbsentView(View):
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        try:
+            appt = AppointmentService.mark_absent(pk, updated_by=request.user)
+            messages.success(request, f"{appt.client.full_name} marked absent.")
+        except AppointmentServiceError as exc:
+            messages.error(request, str(exc))
+        redirect_date = request.POST.get('date') or timezone.localdate().isoformat()
+        return redirect(f"{reverse('appointments:daily_schedule')}?date={redirect_date}")
+
+
+@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+class AppointmentQuickReassignView(View):
+    """Inline reassign used by the pending-reassignment banner on the schedule."""
+    http_method_names = ['post']
+
+    def post(self, request, pk):
+        new_staff_id = request.POST.get('new_staff_id')
+        new_staff = User.objects.filter(
+            pk=new_staff_id, is_active=True, role__in=['staff', 'admin'],
+        ).first()
+        if not new_staff:
+            messages.error(request, "Pick a valid staff member.")
+            return redirect(request.META.get('HTTP_REFERER') or reverse('appointments:daily_schedule'))
+
+        try:
+            AppointmentService.reassign_staff(
+                appointment_id=pk,
+                new_staff=new_staff,
+                reassigned_by=request.user,
+            )
+            messages.success(request, "Reassigned.")
+        except AppointmentServiceError as exc:
+            messages.error(request, str(exc))
+
+        return redirect(request.META.get('HTTP_REFERER') or reverse('appointments:daily_schedule'))
+
+
 @method_decorator([login_required, _admin_or_staff_required], name='dispatch')
 class AppointmentReassignView(View):
     template_name = 'appointments/reassign.html'
 
     def get(self, request, pk):
         appointment = get_object_or_404(Appointment.active_objects, pk=pk)
-        form = ReassignStaffForm(initial={'new_staff': appointment.staff})
+        form = ReassignStaffForm(
+            initial={'new_staff': appointment.staff},
+            exclude_date=appointment.date,
+        )
         return render(request, self.template_name, {
             'form': form,
             'appointment': appointment,
@@ -336,7 +520,7 @@ class AppointmentReassignView(View):
 
     def post(self, request, pk):
         appointment = get_object_or_404(Appointment.active_objects, pk=pk)
-        form = ReassignStaffForm(request.POST)
+        form = ReassignStaffForm(request.POST, exclude_date=appointment.date)
         if form.is_valid():
             try:
                 AppointmentService.reassign_staff(
