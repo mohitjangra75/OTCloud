@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Dashboard | OTCloud{% endblock %}
+
+{% block extra_css %}
+{% include "analytics/_dash_styles.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="dash-greeting">
+  <h1>Good {% now "a" as ampm %}{% if ampm == 'a.m.' %}morning{% else %}afternoon{% endif %}, {{ request.user.first_name|default:"Admin" }}</h1>
+  <div class="date-text">{{ today|date:"l, d F Y" }} · {{ month_label }}</div>
+</div>
+
+<!-- TODAY SNAPSHOT -->
+<div class="section-title">Today</div>
+<div class="stat-row four">
+  <div class="stat-tile primary">
+    <div class="eyebrow">Appointments</div>
+    <div class="big">{{ today_total }}</div>
+    <div class="delta">
+      {% if today_scheduled %}{{ today_scheduled }} scheduled{% endif %}
+      {% if today_completed %} · {{ today_completed }} done{% endif %}
+    </div>
+  </div>
+  <div class="stat-tile">
+    <div class="eyebrow">On Duty Now</div>
+    <div class="big">{{ checked_in_now }}</div>
+    <div class="delta">of {{ total_staff }} staff{% if on_leave_today %} · {{ on_leave_today }} on leave{% endif %}</div>
+  </div>
+  <div class="stat-tile">
+    <div class="eyebrow">Collected Today</div>
+    <div class="big">₹{{ paid_today|floatformat:0|intcomma }}</div>
+    <div class="delta">across paid invoices</div>
+  </div>
+  <div class="stat-tile">
+    <div class="eyebrow">Attention</div>
+    <div class="big">{{ pending_reassign_count|add:pending_followups|add:overdue_count }}</div>
+    <div class="delta">
+      {% if pending_reassign_count %}{{ pending_reassign_count }} reassign · {% endif %}
+      {% if pending_followups %}{{ pending_followups }} follow-ups · {% endif %}
+      {% if overdue_count %}{{ overdue_count }} overdue{% endif %}
+      {% if not pending_reassign_count and not pending_followups and not overdue_count %}All caught up{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- 7-DAY TREND -->
+<div class="bars-card">
+  <h3>Appointments · last 7 days</h3>
+  <div class="bars">
+    {% for d in trend_days %}
+    <div class="bar {% if d.is_today %}today{% endif %}" title="{{ d.date|date:'l, d M' }} — {{ d.count }} appointments">
+      <div class="bar-fill" style="height: {% if d.pct < 5 %}5{% else %}{{ d.pct }}{% endif %}%;"></div>
+      {% if d.count %}<div class="bar-value">{{ d.count }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="bar-labels">
+    {% for d in trend_days %}
+    <div class="bar-label {% if d.is_today %}today{% endif %}">{{ d.label }}</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- REVENUE + LEADS -->
+<div class="split-2">
+  <div class="bars-card">
+    <h3>Revenue · {{ month_label }}</h3>
+    <div class="stat-row" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 0;">
+      <div>
+        <div style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted, #94a3b8);">Paid this month</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #065f46; margin-top: 0.2rem;">₹{{ paid_this_month|floatformat:0|intcomma }}</div>
+        {% if new_clients_month %}<div style="font-size: 0.72rem; color: var(--text-muted, #94a3b8); margin-top: 0.3rem;">+{{ new_clients_month }} new clients</div>{% endif %}
+      </div>
+      <div>
+        <div style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted, #94a3b8);">Outstanding</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #9f1239; margin-top: 0.2rem;">₹{{ outstanding|floatformat:0|intcomma }}</div>
+        {% if overdue_count %}<div style="font-size: 0.72rem; color: #9f1239; margin-top: 0.3rem;">{{ overdue_count }} overdue</div>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="bars-card">
+    <h3>Leads pipeline</h3>
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 0.75rem;">
+      <div style="text-align: center;">
+        <div style="font-size: 1.25rem; font-weight: 800; color: #1d4ed8;">{{ new_leads }}</div>
+        <div style="font-size: 0.68rem; color: var(--text-muted, #94a3b8); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">New</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 1.25rem; font-weight: 800; color: #854d0e;">{{ contacted_leads }}</div>
+        <div style="font-size: 0.68rem; color: var(--text-muted, #94a3b8); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">Contacted</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 1.25rem; font-weight: 800; color: #9a3412;">{{ interested_leads }}</div>
+        <div style="font-size: 0.68rem; color: var(--text-muted, #94a3b8); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">Interested</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-size: 1.25rem; font-weight: 800; color: #065f46;">{{ converted_leads }}</div>
+        <div style="font-size: 0.68rem; color: var(--text-muted, #94a3b8); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">Won</div>
+      </div>
+    </div>
+    <div style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">
+      Conversion rate: <strong style="color: var(--text-primary, #111827);">{{ conv_rate }}%</strong>
+    </div>
+  </div>
+</div>
+
+<!-- UPCOMING TODAY + TOP STAFF -->
+<div class="split-2">
+  <div class="list-card">
+    <div class="list-head">
+      <h3>Upcoming today</h3>
+      <a class="link" href="{% url 'appointments:daily_schedule' %}?date={{ today|date:'Y-m-d' }}">See schedule →</a>
+    </div>
+    {% for a in upcoming_today %}
+    <a class="list-item" href="{% url 'appointments:appointment_detail' pk=a.pk %}" style="text-decoration: none; color: inherit;">
+      <span class="list-time">{{ a.start_time|time:"h:i A" }}</span>
+      <div class="list-main">
+        <div class="list-name">{{ a.client.full_name }}</div>
+        <div class="list-sub">
+          {{ a.staff.get_full_name|default:a.staff.mobile_number }}
+          {% if a.therapy_type %} · {{ a.therapy_type.name }}{% endif %}
+        </div>
+      </div>
+      {% if a.needs_reassignment %}<span class="pill overdue">Reassign</span>{% endif %}
+    </a>
+    {% empty %}
+    <div class="list-empty">Nothing scheduled for the rest of today.</div>
+    {% endfor %}
+  </div>
+
+  <div class="list-card">
+    <div class="list-head">
+      <h3>Top staff · {{ month_label }}</h3>
+      <a class="link" href="{% url 'attendance:team_month' %}">Full report →</a>
+    </div>
+    {% for s in top_staff %}
+    <div class="list-item">
+      <span class="list-time" style="color: var(--text-muted, #94a3b8); font-weight: 800; text-align: center;">#{{ forloop.counter }}</span>
+      <div class="list-main">
+        <div class="list-name">{{ s.get_full_name|default:s.mobile_number }}</div>
+        <div class="list-sub">{{ s.month_completed }} session{{ s.month_completed|pluralize }} · {{ s.month_hours }}</div>
+      </div>
+      <span class="pill present">{{ s.month_completed }}</span>
+    </div>
+    {% empty %}
+    <div class="list-empty">No staff data yet.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- QUICK ACTIONS -->
+<div class="section-title">Shortcuts</div>
+<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+  <a href="{% url 'appointments:daily_schedule' %}" class="btn btn-outline">Daily Schedule</a>
+  <a href="{% url 'appointments:appointment_create' %}" class="btn btn-outline">+ Appointment</a>
+  <a href="{% url 'attendance:team_day' %}" class="btn btn-outline">Team Attendance</a>
+  <a href="{% url 'clients:client_list' %}" class="btn btn-outline">Clients</a>
+  <a href="{% url 'lms:lead_list' %}" class="btn btn-outline">Leads</a>
+  <a href="{% url 'billing:monthly_view' %}" class="btn btn-outline">Billing</a>
+  <a href="{% url 'billing:expense_view' %}" class="btn btn-outline">Expenses</a>
+</div>
+{% endblock %}

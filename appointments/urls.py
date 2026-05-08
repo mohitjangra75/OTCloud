@@ -7,6 +7,7 @@ app_name = 'appointments'
 urlpatterns = [
     # Default landing — day-wise schedule grid (defaults to tomorrow)
     path('', views.DailyScheduleView.as_view(), name='daily_schedule'),
+    path('employee-schedule/', views.EmployeeScheduleView.as_view(), name='employee_schedule'),
     path('schedule/quick-add/', views.ScheduleQuickAddView.as_view(), name='schedule_quick_add'),
     path('schedule/copy-day/', views.ScheduleCopyDayView.as_view(), name='schedule_copy_day'),
 

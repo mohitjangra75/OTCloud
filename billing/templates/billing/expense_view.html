@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Expenses — {{ month_label }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Toolbar — neutral */
+  .toolbar-card {
+    background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 12px; padding: 0.75rem; margin-bottom: 1rem;
+  }
+  .month-row { display: flex; gap: 0.5rem; align-items: center; }
+  .month-nav-btn {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 8px; background: #f8fafc; color: #475569;
+    border: 1px solid #e5e7eb; text-decoration: none; font-weight: 700; flex-shrink: 0;
+  }
+  .month-nav-btn:hover { background: #f1f5f9; color: #0f172a; }
+  .month-picker {
+    padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #e5e7eb;
+    background: #fff; flex: 1; min-width: 0; text-align: center;
+    font-weight: 700; font-size: 1rem; color: #0f172a;
+  }
+
+  /* Stats */
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.55rem; margin-bottom: 1rem; }
+  .stat-tile { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 0.75rem 0.85rem; }
+  .stat-tile .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; }
+  .stat-tile .stat-value { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-top: 0.2rem; font-variant-numeric: tabular-nums; }
+  .stat-tile.t-pending { border-left: 4px solid #f59e0b; }
+  .stat-tile.t-paid { border-left: 4px solid #16a34a; }
+  .stat-tile.t-total { border-left: 4px solid #475569; }
+
+  /* Section card */
+  .section-card {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+    margin-bottom: 1rem; overflow: hidden;
+  }
+  .section-head {
+    padding: 0.85rem 1rem; border-bottom: 1px solid #e5e7eb;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f8fafc;
+  }
+  .section-head h3 { margin: 0; font-size: 0.95rem; color: #0f172a; font-weight: 700; }
+  .section-head .meta { color: #64748b; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+  .pending-head { background: #fffbeb; border-bottom-color: #fde68a; }
+  .pending-head h3 { color: #78350f; }
+  .paid-head h3 { color: #14532d; }
+  .paid-head { background: #f0fdf4; border-bottom-color: #bbf7d0; }
+
+  /* Tables */
+  .ledger { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .ledger thead th {
+    background: #f8fafc; color: #475569; font-weight: 700;
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 0.6rem 0.75rem; border-bottom: 1px solid #e5e7eb; text-align: left;
+  }
+  .ledger tbody td { padding: 0.7rem 0.75rem; border-bottom: 1px solid #f1f5f9; }
+  .ledger tbody tr:last-child td { border-bottom: none; }
+  .ledger tbody td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .ledger tbody td.cen { text-align: center; }
+
+  .scroll-x { overflow-x: auto; }
+  .empty {
+    padding: 2.5rem 1rem; text-align: center; color: #94a3b8;
+    font-size: 0.9rem;
+  }
+  .empty strong { color: #475569; }
+
+  .clear-btn {
+    background: #16a34a; color: #fff; border: none; border-radius: 8px;
+    padding: 0.45rem 0.85rem; font-size: 0.82rem; font-weight: 700;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem;
+  }
+  .clear-btn:hover { background: #15803d; }
+
+  .pending-tag, .paid-tag {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.8rem; font-weight: 600;
+  }
+  .pending-tag { color: #b45309; }
+  .pending-tag::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: #f59e0b;
+  }
+  .paid-tag { color: #15803d; }
+  .paid-tag::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: #16a34a;
+  }
+
+  .row-actions { display: inline-flex; gap: 0.3rem; }
+  .row-actions .btn { padding: 0.3rem 0.55rem; font-size: 0.74rem; }
+
+  /* Inline add */
+  .add-form-wrap {
+    background: #fafafa; padding: 0.85rem 1rem;
+    border-top: 1px dashed #e5e7eb;
+  }
+  .add-form-wrap .add-grid {
+    display: grid; gap: 0.5rem;
+    grid-template-columns: 110px 1fr 1fr 110px 110px 1fr 110px;
+    align-items: end;
+  }
+  .add-form-wrap input, .add-form-wrap select {
+    width: 100%; padding: 0.4rem 0.55rem; font-size: 0.85rem;
+    border: 1px solid #e5e7eb; border-radius: 6px; background: #fff;
+    box-sizing: border-box;
+  }
+  .add-form-wrap label {
+    font-size: 0.7rem; color: #64748b; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 2px;
+  }
+  .add-form-wrap .add-btn {
+    background: #0f172a; color: #fff; border: none; border-radius: 6px;
+    padding: 0.5rem 0.8rem; font-weight: 700; cursor: pointer;
+  }
+  .add-form-wrap .add-btn:hover { background: #1e293b; }
+
+  @media (max-width: 768px) {
+    .stats-row { grid-template-columns: repeat(3, 1fr); }
+    .add-form-wrap .add-grid { grid-template-columns: 1fr 1fr; }
+    .ledger { font-size: 0.8rem; }
+    .ledger thead th, .ledger tbody td { padding: 0.5rem; }
+  }
+  @media (max-width: 480px) {
+    .stats-row { grid-template-columns: 1fr; }
+    .month-picker { font-size: 0.9rem; padding: 0.4rem 0.5rem; }
+    .add-form-wrap .add-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Expenses</h1>
+    <p class="page-subtitle" style="color:#64748b;">
+      {% if is_admin %}Approve and clear expense entries submitted by staff.
+      {% else %}Submit expenses you've paid out of pocket. Admin will mark them as paid back.{% endif %}
+    </p>
+  </div>
+  {% if is_admin %}
+  <div class="page-header-right" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+    <a href="{% url 'billing:monthly_view' %}?month={{ month|date:'Y-m' }}" class="btn btn-outline btn-sm">Billing</a>
+    <a href="{% url 'billing:invoice_list' %}" class="btn btn-outline btn-sm">Invoices</a>
+  </div>
+  {% endif %}
+</div>
+
+<form method="get" action="{% url 'billing:expense_view' %}" class="toolbar-card">
+  <div class="month-row">
+    <a class="month-nav-btn" href="?month={{ prev_month }}" title="Previous month">&lsaquo;</a>
+    <input type="month" name="month" value="{{ month|date:'Y-m' }}" class="month-picker" onchange="this.form.submit()" aria-label="Pick month">
+    <a class="month-nav-btn" href="?month={{ next_month }}" title="Next month">&rsaquo;</a>
+  </div>
+</form>
+
+<div class="stats-row">
+  <div class="stat-tile t-pending">
+    <div class="stat-label">Pending</div>
+    <div class="stat-value">₹{{ pending_total|floatformat:0|intcomma }}</div>
+  </div>
+  <div class="stat-tile t-paid">
+    <div class="stat-label">Paid</div>
+    <div class="stat-value">₹{{ paid_total|floatformat:0|intcomma }}</div>
+  </div>
+  <div class="stat-tile t-total">
+    <div class="stat-label">Total</div>
+    <div class="stat-value">₹{{ grand_total|floatformat:0|intcomma }}</div>
+  </div>
+</div>
+
+<!-- Pending -->
+<div class="section-card">
+  <div class="section-head pending-head">
+    <h3>Pending</h3>
+    <span class="meta">{{ pending_rows|length }} item{{ pending_rows|length|pluralize }} • ₹{{ pending_total|floatformat:0|intcomma }}</span>
+  </div>
+  <div class="scroll-x">
+    <table class="ledger">
+      <thead>
+        <tr>
+          <th style="width:90px;">Date</th>
+          <th>Item</th>
+          <th>Remarks</th>
+          <th class="num">Amount</th>
+          <th>Mode</th>
+          {% if is_admin %}<th>Submitted By</th>{% endif %}
+          <th style="width:170px;">{% if is_admin %}Action{% else %}Status{% endif %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for exp in pending_rows %}
+        <tr>
+          <td style="font-weight:700; color:#475569;">{{ exp.date|date:"j M" }}</td>
+          <td><strong>{{ exp.item }}</strong></td>
+          <td style="color:#64748b;">{{ exp.remarks|default:"—" }}</td>
+          <td class="num">₹{{ exp.amount|floatformat:0|intcomma }}</td>
+          <td>{{ exp.get_payment_mode_display|default:"—" }}</td>
+          {% if is_admin %}
+          <td>{{ exp.paid_to_employee.get_full_name|default:exp.paid_to_employee.mobile_number|default:"—" }}</td>
+          {% endif %}
+          <td>
+            {% if is_admin %}
+            <div style="display:inline-flex; gap:0.3rem; align-items:center;">
+              <form method="post" action="{% url 'billing:expense_mark_reimbursed' pk=exp.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="clear-btn" title="Mark as paid back to employee">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Mark Paid
+                </button>
+              </form>
+              <a href="{% url 'billing:expense_update' pk=exp.pk %}" class="btn btn-sm btn-secondary">Edit</a>
+            </div>
+            {% else %}
+            <span class="pending-tag">Awaiting clearance</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="{% if is_admin %}7{% else %}6{% endif %}" class="empty"><strong>No pending entries</strong> for {{ month_label }}.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Paid -->
+{% if paid_rows %}
+<div class="section-card">
+  <div class="section-head paid-head">
+    <h3>Paid</h3>
+    <span class="meta">{{ paid_rows|length }} item{{ paid_rows|length|pluralize }} • ₹{{ paid_total|floatformat:0|intcomma }}</span>
+  </div>
+  <div class="scroll-x">
+    <table class="ledger">
+      <thead>
+        <tr>
+          <th style="width:90px;">Date</th>
+          <th>Item</th>
+          <th class="num">Amount</th>
+          <th>Mode</th>
+          {% if is_admin %}<th>Employee</th>{% endif %}
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for exp in paid_rows %}
+        <tr>
+          <td style="font-weight:700; color:#475569;">{{ exp.date|date:"j M" }}</td>
+          <td>
+            <strong>{{ exp.item }}</strong>
+            {% if exp.remarks %}<div style="color:#94a3b8; font-size:0.78rem; margin-top:2px;">{{ exp.remarks }}</div>{% endif %}
+          </td>
+          <td class="num">₹{{ exp.amount|floatformat:0|intcomma }}</td>
+          <td>{{ exp.get_payment_mode_display|default:"—" }}</td>
+          {% if is_admin %}
+          <td>{{ exp.paid_to_employee.get_full_name|default:exp.paid_to_employee.mobile_number|default:"—" }}</td>
+          {% endif %}
+          <td><span class="paid-tag">Paid</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Inline add -->
+<div class="section-card">
+  <div class="section-head">
+    <h3>{% if is_admin %}Record Expense{% else %}Submit New Expense{% endif %}</h3>
+  </div>
+  <div class="add-form-wrap">
+    <form method="post" action="{% url 'billing:expense_inline_create' %}">
+      {% csrf_token %}
+      <div class="add-grid">
+        <div><label>Date</label><input type="date" name="date" value="{{ today_iso }}" required></div>
+        <div><label>Item</label><input type="text" name="item" placeholder="e.g. Travel, supplies" required></div>
+        <div><label>Remarks</label><input type="text" name="remarks" placeholder="optional"></div>
+        <div><label>Amount</label><input type="number" name="amount" step="0.01" min="0.01" placeholder="0" required></div>
+        <div>
+          <label>Mode</label>
+          <select name="payment_mode">
+            <option value="">—</option>
+            {% for v, l in payment_modes %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Employee</label>
+          {% if is_admin %}
+          <select name="paid_to_employee" required>
+            <option value="">Select…</option>
+            {% for emp in employees %}<option value="{{ emp.pk }}">{{ emp.get_full_name|default:emp.mobile_number }}</option>{% endfor %}
+          </select>
+          {% else %}
+          <input type="text" value="{{ request.user.get_full_name|default:request.user.mobile_number }}" disabled>
+          {% endif %}
+        </div>
+        <div><label>&nbsp;</label><button type="submit" class="add-btn">{% if is_admin %}Add{% else %}Submit{% endif %}</button></div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -141,10 +141,7 @@ class AppointmentService:
 
     @staticmethod
     def complete_appointment(appointment_id, completed_by=None):
-        """
-        Mark an appointment as completed.
-        Auto-generates an invoice item for the session.
-        """
+        """Mark an appointment as completed."""
         appointment = AppointmentService.get_appointment(appointment_id)
 
         if appointment.status not in (Appointment.Status.SCHEDULED, Appointment.Status.RESCHEDULED):
@@ -157,9 +154,20 @@ class AppointmentService:
             appointment.updated_by = completed_by
         appointment.save()
 
-        # Auto-generate invoice if therapy type and price exist
-        if appointment.therapy_type and appointment.session_price > 0:
-            _auto_invoice_session(appointment, completed_by)
+        # Auto-update billing & invoice
+        if appointment.therapy_type:
+            from billing.services import BillingService, InvoiceService
+            BillingService.tick_session(
+                client=appointment.client,
+                therapy_type=appointment.therapy_type,
+                target_date=appointment.date,
+                actor=completed_by,
+            )
+            InvoiceService.regenerate_for_client_month(
+                client=appointment.client,
+                target_date=appointment.date,
+                actor=completed_by,
+            )
 
         return appointment
 
@@ -230,6 +238,50 @@ class AppointmentService:
     @staticmethod
     def get_client_appointments(client):
         return Appointment.active_objects.filter(client=client)
+
+    @staticmethod
+    def get_employee_week_schedule(staff_user, week_start, days=7):
+        """
+        Per-employee schedule: time-slot rows × day columns for *days* starting at week_start.
+
+        Returns: { staff, week_dates, slots, grid: {(date, time): appt},
+                   total_appointments, total_minutes, pending_reassignments }
+        """
+        from datetime import timedelta as _td
+
+        week_dates = [week_start + _td(days=i) for i in range(days)]
+        week_end = week_dates[-1]
+
+        qs = (
+            Appointment.active_objects.filter(
+                staff=staff_user,
+                date__gte=week_start,
+                date__lte=week_end,
+            )
+            .exclude(status=Appointment.Status.CANCELLED)
+            .select_related('client', 'therapy_type')
+        )
+
+        grid = {}
+        total_minutes = 0
+        pending = 0
+        for appt in qs:
+            key = (appt.date, appt.start_time.replace(second=0, microsecond=0))
+            grid[key] = appt
+            if appt.therapy_type:
+                total_minutes += appt.therapy_type.duration
+            if appt.needs_reassignment:
+                pending += 1
+
+        return {
+            'staff': staff_user,
+            'week_dates': week_dates,
+            'slots': AppointmentService.get_time_slots(),
+            'grid': grid,
+            'total_appointments': qs.count(),
+            'total_minutes': total_minutes,
+            'pending_reassignments': pending,
+        }
 
     @staticmethod
     def get_pending_reassignments(target_date):
@@ -423,18 +475,3 @@ def _get_actor_label(user):
     return f"Staff ({name})"
 
 
-def _auto_invoice_session(appointment, created_by=None):
-    """Create an invoice item for a completed appointment session."""
-    from billing.services import BillingService
-
-    therapy_name = appointment.therapy_type.name
-    duration_label = f"{appointment.therapy_type.duration} min"
-    description = f"{therapy_name} ({duration_label}) - {appointment.date.strftime('%d %b %Y')}"
-
-    BillingService.append_daily_session(
-        client=appointment.client,
-        appointment=appointment,
-        description=description,
-        amount=appointment.session_price,
-        created_by=created_by,
-    )

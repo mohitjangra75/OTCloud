@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Salary Rules — {{ employee.get_full_name|default:employee.mobile_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-card {
+    max-width: 720px; margin: 0 auto;
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+    padding: 1.5rem;
+  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .form-label { font-weight: 600; color: #334155; font-size: 0.85rem; }
+  .help { color: #94a3b8; font-size: 0.75rem; margin-top: 0.2rem; display: block; }
+  .form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; }
+  .header-banner {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 0.85rem 1rem; margin-bottom: 1rem;
+  }
+  .header-banner .name { font-weight: 700; font-size: 1rem; color: #0f172a; }
+  .header-banner .role { color: #94a3b8; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Salary Rules</h1>
+  </div>
+  <div class="page-header-right">
+    <a href="{% url 'salary:salary_list' %}" class="btn btn-outline btn-sm">Back</a>
+  </div>
+</div>
+
+<form method="post" class="form-card">
+  {% csrf_token %}
+  <div class="header-banner">
+    <div class="name">{{ employee.get_full_name|default:employee.mobile_number }}</div>
+    <div class="role">{{ employee.role }} • {{ employee.mobile_number }}</div>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-error">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="form-grid">
+    <div class="full">
+      <label class="form-label">Base Monthly Salary (₹)</label>
+      {{ form.base_monthly_salary }}
+      <span class="help">Salary if a 6-day working week is fully attended.</span>
+    </div>
+    <div>
+      <label class="form-label">Deduction per Absent Day (₹)</label>
+      {{ form.deduction_per_absent_day }}
+      <span class="help">Cut from base for each absent working day. Half-days = half of this.</span>
+    </div>
+    <div></div>
+    <div>
+      <label class="form-label">Sessions Target / Week</label>
+      {{ form.sessions_target_per_week }}
+      <span class="help">Sessions per week considered standard. Set 0 to disable incentives.</span>
+    </div>
+    <div>
+      <label class="form-label">Incentive per Extra Session (₹)</label>
+      {{ form.incentive_per_extra_session }}
+      <span class="help">Added for each session beyond the weekly target (summed across weeks).</span>
+    </div>
+    <div class="full">
+      <label class="form-label">Notes</label>
+      {{ form.notes }}
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="{% url 'salary:salary_list' %}" class="btn btn-outline">Cancel</a>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
+</form>
+{% endblock %}

@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'clients',
     'appointments',
     'billing',
+    'salary',
     'lms',
     'notifications',
     'analytics',

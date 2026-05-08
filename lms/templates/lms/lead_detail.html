@@ -1,140 +1,344 @@
 {% extends "base.html" %}
 
-{% block title %}{{ lead.name }} - Leads - OTCloud{% endblock %}
+{% block title %}{{ lead.name }} — Lead — OTCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Hero */
+  .lead-hero {
+    background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+    color: #fff; border-radius: 16px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.25rem;
+    overflow: hidden; position: relative;
+  }
+  .lead-hero.lost { background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%); }
+  .lead-hero.converted { background: linear-gradient(135deg, #065f46 0%, #10b981 100%); }
+  .lead-hero::after {
+    content: ""; position: absolute; right: -60px; top: -60px;
+    width: 280px; height: 280px; border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+  }
+  .lead-hero-grid {
+    position: relative; z-index: 1;
+    display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;
+  }
+  .lead-hero .name { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.01em; }
+  .lead-hero .meta {
+    color: rgba(255,255,255,0.85); font-size: 0.9rem;
+    margin-top: 0.4rem; display: flex; flex-wrap: wrap; gap: 0.85rem;
+  }
+  .lead-hero .meta svg { vertical-align: -3px; margin-right: 0.25rem; opacity: 0.85; }
+  .verdict-pill {
+    display: inline-block; padding: 0.3rem 0.85rem; border-radius: 999px;
+    background: rgba(255,255,255,0.18); color: #fff;
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; margin-bottom: 0.6rem;
+  }
+  .lead-hero .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .lead-hero .actions .btn-light {
+    background: rgba(255,255,255,0.18); color: #fff; border: 1px solid rgba(255,255,255,0.25);
+    padding: 0.45rem 0.85rem; border-radius: 8px; font-weight: 600;
+    text-decoration: none; font-size: 0.85rem;
+  }
+  .lead-hero .actions .btn-light:hover { background: rgba(255,255,255,0.28); }
+  .lead-hero .actions .btn-light.danger { color: #fecaca; }
+
+  /* Journey */
+  .journey {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+    padding: 1rem 1.25rem; margin-bottom: 1.25rem; overflow: hidden;
+  }
+  .journey-track {
+    display: flex; align-items: center; gap: 0; position: relative;
+  }
+  .journey-step {
+    flex: 1; text-align: center; position: relative;
+  }
+  .journey-step .dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #e2e8f0; color: #94a3b8; display: inline-flex;
+    align-items: center; justify-content: center; font-weight: 800;
+    border: 3px solid #fff; box-shadow: 0 0 0 1px #e2e8f0;
+    position: relative; z-index: 1;
+  }
+  .journey-step .lbl { display: block; font-size: 0.78rem; color: #64748b; margin-top: 0.4rem; font-weight: 600; }
+  .journey-step.done .dot { background: #6366f1; color: #fff; box-shadow: 0 0 0 1px #6366f1; }
+  .journey-step.done .lbl { color: #4338ca; }
+  .journey-step.current .dot {
+    background: #4338ca; color: #fff; box-shadow: 0 0 0 4px #c7d2fe;
+    transform: scale(1.1);
+  }
+  .journey-step.current .lbl { color: #1e1b4b; font-weight: 700; }
+  .journey-step:not(:last-child)::after {
+    content: ""; position: absolute; top: 16px; left: 50%; right: -50%;
+    height: 3px; background: #e2e8f0; z-index: 0;
+  }
+  .journey-step.done:not(:last-child)::after { background: #6366f1; }
+  .journey-lost {
+    background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px;
+    padding: 0.75rem 1rem; color: #991b1b; font-weight: 700;
+  }
+  .journey-converted {
+    background: #ecfdf5; border: 1px solid #bbf7d0; border-radius: 10px;
+    padding: 0.75rem 1rem; color: #065f46; font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .journey-converted a { color: #065f46; text-decoration: underline; }
+
+  /* Stats */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.55rem; margin-bottom: 1.25rem; }
+  .stat-tile { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 0.85rem 1rem; }
+  .stat-tile .lbl { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; font-weight: 700; }
+  .stat-tile .val { font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
+  .stat-tile.t-pending { border-left: 4px solid #f59e0b; }
+  .stat-tile.t-completed { border-left: 4px solid #16a34a; }
+  .stat-tile.t-missed { border-left: 4px solid #ef4444; }
+  .stat-tile.t-age { border-left: 4px solid #6366f1; }
+
+  /* Two-col */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
+  .panel {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden;
+  }
+  .panel-head {
+    padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f8fafc;
+  }
+  .panel-head h3 { margin: 0; font-size: 0.95rem; color: #0f172a; font-weight: 700; }
+  .panel-head .meta { color: #64748b; font-size: 0.78rem; }
+  .panel-body { padding: 1rem; }
+
+  .info-row {
+    display: grid; grid-template-columns: 110px 1fr;
+    padding: 0.55rem 0; border-bottom: 1px solid #f1f5f9;
+    font-size: 0.92rem;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .k { color: #94a3b8; font-weight: 600; font-size: 0.75rem;
+    text-transform: uppercase; letter-spacing: 0.05em; align-self: center; }
+  .info-row .v { color: #0f172a; font-weight: 600; word-break: break-word; }
+  .info-row .v a { color: #4338ca; text-decoration: none; }
+  .info-row .v a:hover { text-decoration: underline; }
+
+  /* Notes */
+  .notes-box {
+    background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
+    padding: 0.85rem 1rem; color: #78350f; font-size: 0.9rem; line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  /* Follow-ups timeline */
+  .timeline { padding: 1rem; }
+  .tl-item {
+    position: relative; padding: 0 0 1rem 1.75rem;
+    border-left: 2px solid #e5e7eb; margin-left: 0.4rem;
+  }
+  .tl-item:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .tl-item::before {
+    content: ""; position: absolute; left: -7px; top: 4px;
+    width: 12px; height: 12px; border-radius: 50%; background: #94a3b8;
+    border: 2px solid #fff; box-shadow: 0 0 0 1px #e5e7eb;
+  }
+  .tl-item.pending::before { background: #f59e0b; box-shadow: 0 0 0 1px #fbbf24; }
+  .tl-item.completed::before { background: #16a34a; box-shadow: 0 0 0 1px #4ade80; }
+  .tl-item.missed::before { background: #ef4444; box-shadow: 0 0 0 1px #f87171; }
+  .tl-head {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.3rem;
+  }
+  .tl-when { font-weight: 700; color: #0f172a; font-size: 0.92rem; }
+  .tl-pill {
+    display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  }
+  .tl-pill.pending { background: #fef3c7; color: #854d0e; }
+  .tl-pill.completed { background: #dcfce7; color: #15803d; }
+  .tl-pill.missed { background: #fee2e2; color: #b91c1c; }
+  .tl-notes { color: #475569; font-size: 0.88rem; line-height: 1.5; }
+  .tl-actions { margin-top: 0.4rem; }
+
+  /* Add follow-up form */
+  .add-follow-up {
+    background: #fafafa; padding: 1rem; border-top: 1px dashed #e5e7eb;
+  }
+  .add-follow-up .grid { display: grid; grid-template-columns: 220px 1fr auto; gap: 0.6rem; align-items: end; }
+  .add-follow-up label { font-size: 0.7rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.25rem; }
+  .add-follow-up input, .add-follow-up textarea {
+    width: 100%; padding: 0.45rem 0.6rem; border: 1px solid #e5e7eb;
+    border-radius: 6px; font-size: 0.9rem; box-sizing: border-box;
+  }
+  .add-follow-up textarea { resize: vertical; min-height: 38px; }
+  .add-follow-up .btn-add {
+    background: #4338ca; color: #fff; border: none; border-radius: 6px;
+    padding: 0.55rem 1rem; font-weight: 700; cursor: pointer; height: 38px;
+  }
+  .add-follow-up .btn-add:hover { background: #3730a3; }
+
+  @media (max-width: 768px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .lead-hero-grid { grid-template-columns: 1fr; }
+    .lead-hero .name { font-size: 1.4rem; }
+    .add-follow-up .grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <div class="page-header-left">
-  </div>
-  <div class="page-header-right">
-    {% if lead.status != 'converted' %}
-    <form method="post" action="{% url 'lms:lead_convert' pk=lead.pk %}" class="inline-form">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-success">Convert to Client</button>
-    </form>
-    {% endif %}
-    <a href="{% url 'lms:lead_update' pk=lead.pk %}" class="btn btn-secondary">Edit</a>
-    <a href="{% url 'lms:lead_delete' pk=lead.pk %}" class="btn btn-danger">Delete</a>
+<!-- HERO -->
+<div class="lead-hero {% if lead.status == 'lost' %}lost{% elif lead.status == 'converted' %}converted{% endif %}">
+  <div class="lead-hero-grid">
+    <div>
+      <span class="verdict-pill">{{ lead.get_status_display }}</span>
+      <div class="name">{{ lead.name }}</div>
+      <div class="meta">
+        <span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          {{ lead.mobile }}
+        </span>
+        {% if lead.email %}
+        <span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          {{ lead.email }}
+        </span>
+        {% endif %}
+        <span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 22s-8-7.58-8-13a8 8 0 0 1 16 0c0 5.42-8 13-8 13z"/></svg>
+          {{ lead.get_source_display }}
+        </span>
+        <span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          {{ lead.assigned_to.get_full_name|default:lead.assigned_to.mobile_number|default:"Unassigned" }}
+        </span>
+      </div>
+    </div>
+    <div class="actions">
+      {% if lead.status != 'converted' and lead.status != 'lost' %}
+      <form method="post" action="{% url 'lms:lead_convert' pk=lead.pk %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn-light" style="cursor:pointer;">→ Convert to Client</button>
+      </form>
+      {% endif %}
+      <a href="{% url 'lms:lead_update' pk=lead.pk %}" class="btn-light">Edit</a>
+      <a href="{% url 'lms:lead_delete' pk=lead.pk %}" class="btn-light danger">Delete</a>
+    </div>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-header">
-    <div class="card-header-left">
-      <h2 class="card-title">{{ lead.name }}</h2>
-      <span class="badge {% if lead.status == 'new' %}badge-blue{% elif lead.status == 'contacted' %}badge-yellow{% elif lead.status == 'interested' %}badge-orange{% elif lead.status == 'converted' %}badge-green{% elif lead.status == 'lost' %}badge-red{% endif %}">
-        {{ lead.get_status_display }}
-      </span>
+<!-- JOURNEY -->
+<div class="journey">
+  {% if lead.status == 'lost' %}
+    <div class="journey-lost">⚠ This lead is marked as lost.</div>
+  {% elif lead.status == 'converted' %}
+    <div class="journey-converted">
+      <span>✓ Converted to client {% if lead.converted_client %}— {{ lead.converted_client.full_name }}{% endif %}</span>
+      {% if lead.converted_client %}
+      <a href="{% url 'clients:client_detail' pk=lead.converted_client.pk %}">View client →</a>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="journey-track">
+      {% for stage in journey_stages %}
+      <div class="journey-step {% if forloop.counter0 < current_idx %}done{% elif forloop.counter0 == current_idx %}done current{% endif %}">
+        <div class="dot">{{ forloop.counter }}</div>
+        <span class="lbl">{{ stage|title }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="stat-tile t-pending"><div class="lbl">Pending Follow-ups</div><div class="val">{{ pending_count }}</div></div>
+  <div class="stat-tile t-completed"><div class="lbl">Completed</div><div class="val">{{ completed_count }}</div></div>
+  <div class="stat-tile t-missed"><div class="lbl">Missed</div><div class="val">{{ missed_count }}</div></div>
+  <div class="stat-tile t-age"><div class="lbl">Age in Pipeline</div><div class="val">{{ age_days }}d</div></div>
+</div>
+
+<!-- TWO COL: INFO + NOTES -->
+<div class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h3>Lead Information</h3><span class="meta">Created {{ lead.created_at|date:"d M Y" }}</span></div>
+    <div class="panel-body">
+      <div class="info-row"><span class="k">Mobile</span><span class="v"><a href="tel:{{ lead.mobile }}">{{ lead.mobile }}</a></span></div>
+      <div class="info-row"><span class="k">Email</span><span class="v">{% if lead.email %}<a href="mailto:{{ lead.email }}">{{ lead.email }}</a>{% else %}<span style="color:#94a3b8;">—</span>{% endif %}</span></div>
+      <div class="info-row"><span class="k">Source</span><span class="v">{{ lead.get_source_display }}</span></div>
+      <div class="info-row"><span class="k">Assigned To</span><span class="v">{{ lead.assigned_to.get_full_name|default:lead.assigned_to.mobile_number|default:"Unassigned" }}</span></div>
+      <div class="info-row"><span class="k">Last Updated</span><span class="v">{{ lead.updated_at|date:"d M Y, H:i" }}</span></div>
+      {% if next_pending %}
+      <div class="info-row"><span class="k">Next Action</span><span class="v" style="color:#b45309;">{{ next_pending.follow_up_date|date:"d M Y, H:i" }}</span></div>
+      {% endif %}
+      {% if last_completed %}
+      <div class="info-row"><span class="k">Last Contact</span><span class="v">{{ last_completed.follow_up_date|date:"d M Y, H:i" }}</span></div>
+      {% endif %}
     </div>
   </div>
-  <div class="card-body">
-    <div class="detail-grid">
-      <div class="detail-item">
-        <span class="detail-label">Mobile</span>
-        <span class="detail-value">{{ lead.mobile }}</span>
+
+  <div class="panel">
+    <div class="panel-head"><h3>Notes</h3></div>
+    <div class="panel-body">
+      {% if lead.notes %}
+      <div class="notes-box">{{ lead.notes }}</div>
+      {% else %}
+      <p style="color:#94a3b8; text-align:center; padding: 1.5rem 0; margin: 0;">No notes added yet. Click <strong>Edit</strong> to add some context about this lead.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- FOLLOW-UPS TIMELINE -->
+<div class="panel">
+  <div class="panel-head">
+    <h3>Follow-ups</h3>
+    <span class="meta">{{ pending_count }} pending • {{ completed_count }} completed • {{ missed_count }} missed</span>
+  </div>
+  {% if follow_ups %}
+  <div class="timeline">
+    {% for fu in follow_ups %}
+    <div class="tl-item {{ fu.status }}">
+      <div class="tl-head">
+        <span class="tl-when">{{ fu.follow_up_date|date:"d M Y, H:i" }}</span>
+        <span class="tl-pill {{ fu.status }}">{{ fu.get_status_display }}</span>
       </div>
-      <div class="detail-item">
-        <span class="detail-label">Email</span>
-        <span class="detail-value">{{ lead.email|default:"--" }}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">Source</span>
-        <span class="detail-value">{{ lead.get_source_display }}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">Assigned To</span>
-        <span class="detail-value">{{ lead.assigned_to.get_full_name|default:"Unassigned" }}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">Created</span>
-        <span class="detail-value">{{ lead.created_at|date:"M d, Y" }}</span>
-      </div>
-      {% if lead.converted_client %}
-      <div class="detail-item">
-        <span class="detail-label">Converted Client</span>
-        <span class="detail-value">{{ lead.converted_client }}</span>
+      <div class="tl-notes">{{ fu.notes|default:"No notes."|linebreaksbr }}</div>
+      {% if fu.status == 'pending' %}
+      <div class="tl-actions">
+        <form method="post" action="{% url 'lms:follow_up_mark_completed' pk=fu.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-success" style="padding:0.3rem 0.7rem; font-size:0.78rem;">✓ Mark Complete</button>
+        </form>
       </div>
       {% endif %}
     </div>
-
-    {% if lead.notes %}
-    <div class="detail-section">
-      <h3 class="detail-section-title">Notes</h3>
-      <p>{{ lead.notes|linebreaksbr }}</p>
-    </div>
-    {% endif %}
+    {% endfor %}
   </div>
-</div>
-
-<div class="card">
-  <div class="card-header">
-    <h2 class="card-title">Follow-ups</h2>
+  {% else %}
+  <div style="padding: 2rem 1rem; text-align:center; color:#94a3b8;">
+    No follow-ups yet. Schedule one below to start a conversation thread.
   </div>
-  <div class="card-body">
-    {% if follow_ups %}
-    <div class="table-responsive">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Status</th>
-            <th>Notes</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for fu in follow_ups %}
-          <tr>
-            <td>{{ fu.follow_up_date|date:"M d, Y H:i" }}</td>
-            <td>
-              <span class="badge {% if fu.status == 'pending' %}badge-yellow{% elif fu.status == 'completed' %}badge-green{% elif fu.status == 'missed' %}badge-red{% endif %}">
-                {{ fu.get_status_display }}
-              </span>
-            </td>
-            <td>{{ fu.notes|default:"--"|truncatewords:20 }}</td>
-            <td>
-              {% if fu.status == 'pending' %}
-              <form method="post" action="{% url 'lms:follow_up_mark_completed' pk=fu.pk %}" class="inline-form">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-success">Mark Complete</button>
-              </form>
-              {% else %}
-              <span class="text-muted">--</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p class="text-muted">No follow-ups scheduled.</p>
-    {% endif %}
+  {% endif %}
 
-    <div class="detail-section">
-      <h3 class="detail-section-title">Schedule Follow-up</h3>
-      <form method="post" action="{% url 'lms:lead_add_follow_up' pk=lead.pk %}" class="form-inline">
-        {% csrf_token %}
-        <div class="form-row">
-          {% for field in follow_up_form %}
-          <div class="form-group">
-            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-            {{ field }}
-            {% if field.errors %}
-            <ul class="form-errors">
-              {% for error in field.errors %}
-              <li>{{ error }}</li>
-              {% endfor %}
-            </ul>
-            {% endif %}
-          </div>
-          {% endfor %}
-          <div class="form-group form-group-action">
-            <button type="submit" class="btn btn-primary">Add Follow-up</button>
-          </div>
+  <div class="add-follow-up">
+    <form method="post" action="{% url 'lms:lead_add_follow_up' pk=lead.pk %}">
+      {% csrf_token %}
+      <div class="grid">
+        <div>
+          <label>{{ follow_up_form.follow_up_date.label }}</label>
+          {{ follow_up_form.follow_up_date }}
+          {% if follow_up_form.follow_up_date.errors %}<small style="color:#ef4444;">{{ follow_up_form.follow_up_date.errors|join:", " }}</small>{% endif %}
         </div>
-      </form>
-    </div>
+        <div>
+          <label>{{ follow_up_form.notes.label }}</label>
+          {{ follow_up_form.notes }}
+        </div>
+        <div>
+          <button type="submit" class="btn-add">+ Schedule</button>
+        </div>
+      </div>
+    </form>
   </div>
 </div>
 {% endblock %}

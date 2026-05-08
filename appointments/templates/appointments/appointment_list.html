@@ -111,7 +111,7 @@
   <div class="page-header-left">
     <h1 class="page-title">Appointments</h1>
   </div>
-  {% if request.user.role != 'client' %}
+  {% if request.user.is_superuser or request.user.role == 'admin' %}
   <div class="page-header-right" style="display:flex; gap:0.5rem;">
     <a href="{% url 'appointments:daily_schedule' %}" class="btn btn-outline">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem; vertical-align: -2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -158,7 +158,7 @@
             <th>Therapy</th>
             <th>Staff</th>
             <th>Status</th>
-            {% if request.user.role != 'client' %}<th>Actions</th>{% endif %}
+            {% if request.user.is_superuser or request.user.role == 'admin' %}<th>Actions</th>{% endif %}
           </tr>
         </thead>
         <tbody>
@@ -174,7 +174,7 @@
             <td>
               <span class="badge badge-{{ appointment.status }}">{{ appointment.get_status_display }}</span>
             </td>
-            {% if request.user.role != 'client' %}
+            {% if request.user.is_superuser or request.user.role == 'admin' %}
             <td>
               <div class="table-actions-cell">
                 <a href="{% url 'appointments:appointment_update' pk=appointment.pk %}" class="btn btn-sm btn-secondary" title="Edit">Edit</a>
@@ -200,7 +200,7 @@
           {% if appointment.therapy_type %}<span>{{ appointment.therapy_type.name }} &middot; {{ appointment.therapy_type.duration }} min</span>{% endif %}
           <span>Staff: {{ appointment.staff.get_full_name }}</span>
         </div>
-        {% if request.user.role != 'client' %}
+        {% if request.user.is_superuser or request.user.role == 'admin' %}
         <div class="mobile-card-actions">
           <a href="{% url 'appointments:appointment_update' pk=appointment.pk %}" class="btn btn-sm btn-secondary">Edit</a>
           <a href="{% url 'appointments:appointment_delete' pk=appointment.pk %}" class="btn btn-sm btn-danger">Delete</a>

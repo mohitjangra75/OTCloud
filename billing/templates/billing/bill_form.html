@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} — OTCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-card {
+    max-width: 720px; margin: 0 auto;
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+    padding: 1.5rem;
+  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .form-label { font-weight: 600; color: #334155; font-size: 0.85rem; }
+  .form-help { color: #94a3b8; font-size: 0.75rem; margin-top: 0.2rem; display: block; }
+  .form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; }
+  @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">{{ title }}</h1>
+  </div>
+  <div class="page-header-right">
+    <a href="{% url 'billing:monthly_view' %}" class="btn btn-outline btn-sm">Back to ledger</a>
+  </div>
+</div>
+
+<form method="post" class="form-card">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-error">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="form-grid">
+    <div>
+      <label class="form-label">Client</label>
+      {{ form.client }}
+      {% if form.client.errors %}<small class="form-help" style="color:#ef4444;">{{ form.client.errors|join:", " }}</small>{% endif %}
+    </div>
+    <div>
+      <label class="form-label">Session Type</label>
+      {{ form.therapy_type }}
+      {% if form.therapy_type.errors %}<small class="form-help" style="color:#ef4444;">{{ form.therapy_type.errors|join:", " }}</small>{% endif %}
+    </div>
+
+    <div>
+      <label class="form-label">Month</label>
+      {{ form.month }}
+    </div>
+    <div></div>
+
+    <div>
+      <label class="form-label">Sessions / Week</label>
+      {{ form.sessions_per_week }}
+    </div>
+    <div>
+      <label class="form-label">Total Sessions (this month)</label>
+      {{ form.total_sessions }}
+    </div>
+
+    <div>
+      <label class="form-label">Package Amount (₹)</label>
+      {{ form.package_amount }}
+    </div>
+    <div>
+      <label class="form-label">Paid Amount (₹)</label>
+      {{ form.paid_amount }}
+    </div>
+
+    <div>
+      <label class="form-label">Carry-forward (₹)</label>
+      {{ form.carry_forward }}
+      <small class="form-help">Auto-pulled from previous month dues if left blank.</small>
+    </div>
+    <div>
+      <label class="form-label">Payment Mode</label>
+      {{ form.payment_mode }}
+    </div>
+
+    <div>
+      <label class="form-label">Paid Date</label>
+      {{ form.paid_date }}
+    </div>
+    <div></div>
+
+    <div class="full">
+      <label class="form-label">Notes</label>
+      {{ form.notes }}
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="{% url 'billing:monthly_view' %}" class="btn btn-outline">Cancel</a>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
+</form>
+{% endblock %}

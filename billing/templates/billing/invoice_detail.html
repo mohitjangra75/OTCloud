@@ -1,302 +1,148 @@
 {% extends "base.html" %}
+{% load humanize %}
 
-{% block title %}Invoice {{ invoice.invoice_number }} - OTCloud{% endblock %}
+{% block title %}{{ invoice.invoice_number }} — Invoice{% endblock %}
 
 {% block extra_css %}
 <style>
-  .invoice-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-bottom: 1.5rem;
+  .inv-doc {
+    max-width: 880px; margin: 0 auto;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+    padding: 2rem 2rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   }
-  .invoice-header-info h1 {
-    font-size: 1.375rem;
-    font-weight: 700;
-    margin: 0 0 0.25rem;
+  .inv-head {
+    display: flex; flex-wrap: wrap; gap: 1rem;
+    justify-content: space-between; align-items: flex-start;
+    border-bottom: 2px solid #0d9488; padding-bottom: 1rem; margin-bottom: 1rem;
   }
-  .invoice-header-meta {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    font-size: 0.8125rem;
-    color: var(--text-secondary, #64748b);
+  .inv-brand h2 { margin: 0; color: #0f766e; font-size: 1.5rem; letter-spacing: 0.02em; }
+  .inv-brand p { margin: 0.2rem 0 0; color: #64748b; font-size: 0.85rem; }
+  .inv-num {
+    text-align: right; font-size: 0.85rem; color: #475569;
   }
-  .invoice-header-meta .sep { color: var(--text-muted, #94a3b8); }
-  .invoice-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  /* Info grid */
-  .info-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-  .info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-  }
-  .info-label {
-    font-size: 0.6875rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted, #94a3b8);
-  }
-  .info-value {
-    font-size: 0.9375rem;
-    font-weight: 500;
-    color: var(--text, #1e293b);
-  }
-
-  /* Totals */
-  .totals-section {
-    margin-top: 1.25rem;
-    padding-top: 1rem;
-    border-top: 2px solid var(--border, #e2e8f0);
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.375rem;
-  }
-  .totals-row {
-    display: flex;
-    justify-content: space-between;
-    width: 220px;
-    font-size: 0.875rem;
-  }
-  .totals-label { color: var(--text-secondary, #64748b); }
-  .totals-value { font-weight: 600; font-variant-numeric: tabular-nums; }
-  .totals-row-highlight {
-    font-size: 1rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--border, #e2e8f0);
-    margin-top: 0.25rem;
-  }
-  .totals-row-highlight .totals-label { font-weight: 600; color: var(--text, #1e293b); }
-  .totals-row-highlight .totals-value { font-size: 1.125rem; color: var(--primary, #0d9488); }
-
-  /* Status badges */
-  .badge-draft { background: #f1f5f9; color: #475569; }
-  .badge-sent { background: #dbeafe; color: #1d4ed8; }
-  .badge-paid { background: #dcfce7; color: #15803d; }
-  .badge-overdue { background: #fee2e2; color: #b91c1c; }
-
-  /* Item number column */
-  .item-num {
-    font-weight: 600;
-    color: var(--text-muted, #94a3b8);
+  .inv-num .num {
+    font-size: 1.1rem; font-weight: 700; color: #0f172a;
     font-variant-numeric: tabular-nums;
   }
+  .inv-meta {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;
+    margin: 0.5rem 0 1rem;
+  }
+  .inv-meta .block h4 { margin: 0 0 0.25rem; color: #64748b; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .inv-meta .block p { margin: 0; font-size: 0.95rem; color: #0f172a; font-weight: 600; }
 
-  /* Payment / Add item sections */
-  .inline-form-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-end;
-    flex-wrap: wrap;
+  .inv-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+  .inv-table th {
+    background: #f1f5f9; text-align: left; padding: 0.6rem 0.75rem;
+    font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+    border-bottom: 1px solid #cbd5e1;
   }
-  .inline-form-row .form-group {
-    flex: 1;
-    min-width: 140px;
-    margin-bottom: 0;
-  }
+  .inv-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid #e2e8f0; }
+  .inv-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 
-  @media (min-width: 768px) {
-    .detail-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .inv-totals { margin-top: 1rem; margin-left: auto; max-width: 320px; font-size: 0.92rem; }
+  .inv-totals .row { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px dashed #e2e8f0; }
+  .inv-totals .row.total { border-top: 2px solid #0f172a; border-bottom: none; padding-top: 0.6rem; font-weight: 800; font-size: 1.05rem; color: #0f172a; }
+  .inv-totals .row.balance { color: #b91c1c; font-weight: 800; font-size: 1.1rem; }
+  .inv-totals .row.balance.paid { color: #15803d; }
+
+  .inv-foot { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 0.8rem; text-align: center; }
+
+  @media print {
+    body * { visibility: hidden; }
+    .inv-doc, .inv-doc * { visibility: visible; }
+    .inv-doc { position: absolute; left: 0; top: 0; box-shadow: none; border: none; }
+    .no-print { display: none !important; }
   }
-  @media (max-width: 640px) {
-    .info-grid { grid-template-columns: 1fr; }
-    .invoice-actions { width: 100%; }
-    .invoice-actions .btn { flex: 1; }
-    .totals-section { align-items: stretch; }
-    .totals-row { width: 100%; }
-    .inline-form-row { flex-direction: column; }
-  }
+  @media (max-width: 640px) { .inv-meta { grid-template-columns: 1fr; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Header -->
-<div class="invoice-header">
-  <div class="invoice-header-info">
-    <h1>{{ invoice.invoice_number }}</h1>
-    <div class="invoice-header-meta">
-      <span class="badge badge-{{ invoice.status }}" style="font-size: 0.8125rem; padding: 0.25rem 0.75rem;">{{ invoice.get_status_display }}</span>
-      <span class="sep">&middot;</span>
-      <span>{{ invoice.client }}</span>
-      <span class="sep">&middot;</span>
-      <span>Created {{ invoice.created_at|date:"d M Y" }}</span>
-      {% if invoice.due_date %}
-      <span class="sep">&middot;</span>
-      <span>Due {{ invoice.due_date|date:"d M Y" }}</span>
-      {% endif %}
-    </div>
+<div class="page-header no-print">
+  <div class="page-header-left">
+    <h1 class="page-title">Invoice</h1>
   </div>
-  {% if not is_client %}
-  <div class="invoice-actions">
-    <a href="{% url 'billing:invoice_update' pk=invoice.pk %}" class="btn btn-secondary btn-sm">Edit</a>
-    <a href="{% url 'billing:invoice_delete' pk=invoice.pk %}" class="btn btn-danger btn-sm">Delete</a>
-  </div>
-  {% endif %}
-</div>
-
-<!-- Invoice Info + Summary side by side -->
-<div class="detail-two-col" style="margin-bottom: 1rem;">
-  <div class="card">
-    <div class="card-header"><h3>Invoice Details</h3></div>
-    <div class="card-body">
-      <div class="info-grid">
-        <div class="info-item">
-          <span class="info-label">Invoice Number</span>
-          <span class="info-value">{{ invoice.invoice_number }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Client</span>
-          <span class="info-value">{{ invoice.client }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Status</span>
-          <span class="info-value"><span class="badge badge-{{ invoice.status }}">{{ invoice.get_status_display }}</span></span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Due Date</span>
-          <span class="info-value">{{ invoice.due_date|date:"d M Y"|default:"Not set" }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Created</span>
-          <span class="info-value">{{ invoice.created_at|date:"d M Y, h:i A" }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Updated</span>
-          <span class="info-value">{{ invoice.updated_at|date:"d M Y, h:i A" }}</span>
-        </div>
-      </div>
-      {% if invoice.notes %}
-      <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border-light, #f1f5f9);">
-        <span class="info-label">Notes</span>
-        <p style="margin-top: 0.25rem; font-size: 0.875rem; color: var(--text-secondary, #64748b);">{{ invoice.notes|linebreaksbr }}</p>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header"><h3>Payment Summary</h3></div>
-    <div class="card-body">
-      <div class="info-grid">
-        <div class="info-item">
-          <span class="info-label">Total Amount</span>
-          <span class="info-value" style="font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums;">&#8377; {{ invoice.total_amount }}</span>
-        </div>
-        <div class="info-item">
-          <span class="info-label">Paid Amount</span>
-          <span class="info-value" style="font-size: 1.25rem; font-weight: 700; color: var(--success, #16a34a); font-variant-numeric: tabular-nums;">&#8377; {{ invoice.paid_amount }}</span>
-        </div>
-      </div>
-      <div style="margin-top: 1.25rem; padding: 1rem; background: var(--bg, #f8fafc); border-radius: var(--radius, 8px); text-align: center;">
-        <span class="info-label">Balance Due</span>
-        <div style="font-size: 1.5rem; font-weight: 700; color: {% if invoice.balance_due > 0 %}var(--error, #dc2626){% else %}var(--success, #16a34a){% endif %}; font-variant-numeric: tabular-nums; margin-top: 0.25rem;">
-          &#8377; {{ invoice.balance_due }}
-        </div>
-      </div>
-
-      {% if not is_client and invoice.status != 'paid' %}
-      <form method="post" action="{% url 'billing:invoice_mark_paid' pk=invoice.pk %}" style="margin-top: 1rem;">
-        {% csrf_token %}
-        <div class="inline-form-row">
-          <div class="form-group">
-            <label for="payment-amount" class="form-label">Record Payment</label>
-            <input type="number" name="amount" id="payment-amount" class="form-input" step="0.01" min="0" value="{{ invoice.balance_due }}" placeholder="Amount">
-          </div>
-          <button type="submit" class="btn btn-success" style="margin-bottom: 0;">Mark Paid</button>
-        </div>
-      </form>
-      {% endif %}
-    </div>
-  </div>
-</div>
-
-<!-- Line Items -->
-<div class="card" style="margin-bottom: 1rem;">
-  <div class="card-header">
-    <h3>Line Items</h3>
-    <span class="text-sm text-muted">{{ invoice.items.count }} item{{ invoice.items.count|pluralize }}</span>
-  </div>
-  <div class="table-responsive">
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 40px;">#</th>
-          <th>Date</th>
-          <th>Description</th>
-          <th style="text-align: right;">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in invoice.items.all %}
-        <tr>
-          <td class="item-num">{{ forloop.counter }}</td>
-          <td>{{ item.date|date:"d M Y" }}</td>
-          <td>{{ item.description }}</td>
-          <td style="text-align: right; font-variant-numeric: tabular-nums; font-weight: 500;">&#8377; {{ item.amount }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-muted, #94a3b8); font-size: 0.875rem;">No items added yet.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div style="padding: 0 1.5rem 0.5rem;">
-    <div class="totals-section">
-      <div class="totals-row">
-        <span class="totals-label">Subtotal</span>
-        <span class="totals-value">&#8377; {{ invoice.total_amount }}</span>
-      </div>
-      <div class="totals-row">
-        <span class="totals-label">Paid</span>
-        <span class="totals-value" style="color: var(--success, #16a34a);">- &#8377; {{ invoice.paid_amount }}</span>
-      </div>
-      <div class="totals-row totals-row-highlight">
-        <span class="totals-label">Balance Due</span>
-        <span class="totals-value">&#8377; {{ invoice.balance_due }}</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Add Item (staff only) -->
-{% if item_form and not is_client %}
-<div class="card">
-  <div class="card-header"><h3>Add Line Item</h3></div>
-  <div class="card-body">
-    <form method="post" action="{% url 'billing:invoice_add_item' pk=invoice.pk %}" novalidate>
+  <div class="page-header-right" style="display:flex; gap:0.5rem;">
+    <a href="{% url 'billing:invoice_list' %}" class="btn btn-outline btn-sm">Back to invoices</a>
+    <button onclick="window.print()" class="btn btn-outline btn-sm">Print</button>
+    {% if is_admin %}
+    <form method="post" action="{% url 'billing:invoice_regenerate' pk=invoice.pk %}" style="display:inline;">
       {% csrf_token %}
-      <div class="inline-form-row">
-        {% for field in item_form %}
-        <div class="form-group">
-          <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}
-          <ul style="list-style: none; padding: 0; margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--error, #dc2626);">
-            {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
-          </ul>
-          {% endif %}
-        </div>
-        {% endfor %}
-        <button type="submit" class="btn btn-primary" style="margin-bottom: 0;">Add Item</button>
-      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Regenerate</button>
     </form>
+    {% endif %}
   </div>
 </div>
-{% endif %}
+
+<div class="inv-doc">
+  <div class="inv-head">
+    <div class="inv-brand">
+      <h2>OTCloud — Invoice</h2>
+      <p>Therapy session billing summary</p>
+    </div>
+    <div class="inv-num">
+      <div>Invoice #</div>
+      <div class="num">{{ invoice.invoice_number }}</div>
+      <div style="margin-top:0.25rem;">Generated {{ invoice.generated_at|date:"d M Y, H:i" }}</div>
+    </div>
+  </div>
+
+  <div class="inv-meta">
+    <div class="block">
+      <h4>Billed To</h4>
+      <p>{{ invoice.client.full_name }}</p>
+      {% if invoice.client.mobile_number %}<p style="font-weight:400; color:#64748b; font-size:0.85rem;">{{ invoice.client.mobile_number }}</p>{% endif %}
+      {% if invoice.client.email %}<p style="font-weight:400; color:#64748b; font-size:0.85rem;">{{ invoice.client.email }}</p>{% endif %}
+    </div>
+    <div class="block" style="text-align:right;">
+      <h4>Billing Month</h4>
+      <p>{{ invoice.month|date:"F Y" }}</p>
+      <p style="font-weight:400; color:#64748b; font-size:0.85rem;">{{ invoice.total_sessions }} sessions</p>
+    </div>
+  </div>
+
+  <table class="inv-table">
+    <thead>
+      <tr>
+        <th>Session Type</th>
+        <th class="num">Sessions/Week</th>
+        <th class="num">Total Sessions</th>
+        <th class="num">Package</th>
+        <th class="num">Paid</th>
+        <th class="num">Dues</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td>{{ line.therapy_type.name }}</td>
+        <td class="num">{{ line.sessions_per_week|default:"—" }}</td>
+        <td class="num">{{ line.total_sessions }}</td>
+        <td class="num">₹{{ line.package_amount|floatformat:0|intcomma }}</td>
+        <td class="num">₹{{ line.paid_amount|floatformat:0|intcomma }}</td>
+        <td class="num"><strong>₹{{ line.dues_current_month|floatformat:0|intcomma }}</strong></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" style="text-align:center; color:#94a3b8;">No session rows.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="inv-totals">
+    <div class="row"><span>Subtotal (Billed)</span><strong>₹{{ invoice.total_billed|floatformat:0|intcomma }}</strong></div>
+    <div class="row"><span>Carry forward</span><strong>₹{{ invoice.carry_forward|floatformat:0|intcomma }}</strong></div>
+    <div class="row total"><span>Total</span><span>₹{{ invoice.total_billed|add:invoice.carry_forward|floatformat:0|intcomma }}</span></div>
+    <div class="row"><span>Paid</span><strong style="color:#15803d;">- ₹{{ invoice.total_paid|floatformat:0|intcomma }}</strong></div>
+    <div class="row balance {% if invoice.balance_due == 0 %}paid{% endif %}">
+      <span>{% if invoice.balance_due == 0 %}Settled{% else %}Balance Due{% endif %}</span>
+      <span>₹{{ invoice.balance_due|floatformat:0|intcomma }}</span>
+    </div>
+  </div>
+
+  <div class="inv-foot">
+    Auto-generated invoice • Refreshed when sessions complete or payments are recorded.
+  </div>
+</div>
 {% endblock %}

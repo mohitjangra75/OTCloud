@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Dashboard | OTCloud{% endblock %}
+
+{% block extra_css %}
+{% include "analytics/_dash_styles.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="dash-greeting">
+  <h1>Welcome, {{ client_profile.first_name|default:request.user.first_name|default:"there" }}</h1>
+  <div class="date-text">{{ today|date:"l, d F Y" }}</div>
+</div>
+
+{% if not client_profile %}
+<div class="client-hero-empty">
+  <strong>We couldn't find your client profile.</strong>
+  <div style="margin-top: 0.3rem; font-size: 0.85rem;">Please contact reception to link your account.</div>
+</div>
+{% else %}
+
+<!-- NEXT APPOINTMENT HERO -->
+{% if next_appt %}
+<div class="client-hero">
+  <div class="eyebrow">Next appointment</div>
+  <div class="big-date">{{ next_appt.date|date:"l, d M" }} · {{ next_appt.start_time|time:"h:i A" }}</div>
+  <div class="meta">
+    {% if next_appt.therapy_type %}{{ next_appt.therapy_type.name }} ({{ next_appt.therapy_type.duration }} min) · {% endif %}
+    with {{ next_appt.staff.get_full_name|default:next_appt.staff.mobile_number }}
+  </div>
+  <div class="actions">
+    <a href="{% url 'appointments:appointment_detail' pk=next_appt.pk %}" class="btn btn-sm">View details</a>
+    <a href="{% url 'appointments:appointment_reschedule' pk=next_appt.pk %}" class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: #fff;">Reschedule</a>
+  </div>
+</div>
+{% else %}
+<div class="client-hero-empty">
+  <strong>No upcoming appointments scheduled.</strong>
+  <div style="margin-top: 0.3rem; font-size: 0.85rem;">Please contact reception to book your next session.</div>
+</div>
+{% endif %}
+
+<!-- STATS -->
+<div class="section-title">Your progress</div>
+<div class="stat-row four">
+  <div class="stat-tile">
+    <div class="eyebrow">Total sessions</div>
+    <div class="big">{{ total_sessions }}</div>
+    <div class="delta">{% if month_sessions %}{{ month_sessions }} this month{% else %}none this month{% endif %}</div>
+  </div>
+  <div class="stat-tile">
+    <div class="eyebrow">Paid</div>
+    <div class="big">₹{{ total_paid|floatformat:0|intcomma }}</div>
+    <div class="delta">lifetime</div>
+  </div>
+  <div class="stat-tile {% if overdue_count %}accent-indigo{% endif %}">
+    <div class="eyebrow">Outstanding</div>
+    <div class="big">₹{{ outstanding|floatformat:0|intcomma }}</div>
+    <div class="delta">{% if overdue_count %}{{ overdue_count }} overdue{% else %}nothing overdue{% endif %}</div>
+  </div>
+  <div class="stat-tile">
+    <div class="eyebrow">Upcoming</div>
+    <div class="big">{{ upcoming|length }}</div>
+    <div class="delta">scheduled sessions</div>
+  </div>
+</div>
+
+<!-- UPCOMING + RECENT -->
+<div class="split-2">
+  <div class="list-card">
+    <div class="list-head">
+      <h3>Upcoming sessions</h3>
+      <a class="link" href="{% url 'appointments:appointment_list' %}">See all →</a>
+    </div>
+    {% for a in upcoming %}
+    <a class="list-item" href="{% url 'appointments:appointment_detail' pk=a.pk %}" style="text-decoration: none; color: inherit;">
+      <span class="list-time" style="font-size: 0.72rem;">{{ a.date|date:"d M" }}<br><span style="color: var(--text-muted, #94a3b8); font-weight: 500;">{{ a.start_time|time:"h:i A" }}</span></span>
+      <div class="list-main">
+        <div class="list-name">
+          {% if a.therapy_type %}{{ a.therapy_type.name }}{% else %}Session{% endif %}
+        </div>
+        <div class="list-sub">with {{ a.staff.get_full_name|default:a.staff.mobile_number }}</div>
+      </div>
+      <span class="pill scheduled">Scheduled</span>
+    </a>
+    {% empty %}
+    <div class="list-empty">No upcoming sessions.</div>
+    {% endfor %}
+  </div>
+
+  <div class="list-card">
+    <div class="list-head">
+      <h3>Recent sessions</h3>
+    </div>
+    {% for a in recent_sessions %}
+    <a class="list-item" href="{% url 'appointments:appointment_detail' pk=a.pk %}" style="text-decoration: none; color: inherit;">
+      <span class="list-time" style="font-size: 0.72rem;">{{ a.date|date:"d M" }}</span>
+      <div class="list-main">
+        <div class="list-name">
+          {% if a.therapy_type %}{{ a.therapy_type.name }}{% else %}Session{% endif %}
+        </div>
+        <div class="list-sub">with {{ a.staff.get_full_name|default:a.staff.mobile_number }}</div>
+      </div>
+      <span class="pill {{ a.status }}">{{ a.get_status_display }}</span>
+    </a>
+    {% empty %}
+    <div class="list-empty">No session history yet.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+  <a href="{% url 'appointments:appointment_list' %}" class="btn btn-primary">My Appointments</a>
+  <a href="{% url 'billing:monthly_view' %}" class="btn btn-outline">Billing</a>
+  <a href="{% url 'accounts:profile' %}" class="btn btn-outline">Profile</a>
+</div>
+{% endif %}
+{% endblock %}

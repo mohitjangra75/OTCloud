@@ -308,6 +308,10 @@
       Today at a glance — click any open slot to book, or pick a different day to plan ahead.
     </p>
   </div>
+  <div class="page-header-right" style="display:flex; gap:0.5rem;">
+    <a href="{% url 'appointments:employee_schedule' %}" class="btn btn-outline btn-sm">Employee View</a>
+    <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline btn-sm">All Appointments</a>
+  </div>
 </div>
 
 <div class="sch-header">
@@ -331,6 +335,7 @@
       <label for="goto-date" class="sch-goto-label">Go to date</label>
       <input id="goto-date" type="date" name="date" value="{{ target_date|date:'Y-m-d' }}" class="form-input sch-goto-input" onchange="this.form.submit()">
     </form>
+    {% if request.user.is_superuser or request.user.role == 'admin' %}
     <form method="post" action="{% url 'appointments:schedule_copy_day' %}" style="display:inline;">
       {% csrf_token %}
       <input type="hidden" name="target_date" value="{{ target_date|date:'Y-m-d' }}">
@@ -339,10 +344,14 @@
         Copy from {{ prev_date|date:"d M" }}
       </button>
     </form>
+    <a href="{% url 'appointments:appointment_create' %}?date={{ target_date|date:'Y-m-d' }}" class="btn btn-primary btn-sm">
+      + New Appointment
+    </a>
+    {% endif %}
   </div>
 </div>
 
-{% if pending_reassignments %}
+{% if pending_reassignments %}{% if request.user.is_superuser or request.user.role == 'admin' %}
 <div class="reassign-banner">
   <div class="rb-header">
     <div class="rb-title">
@@ -381,7 +390,7 @@
     {% endfor %}
   </div>
 </div>
-{% endif %}
+{% endif %}{% endif %}
 
 <div class="sch-grid-wrap">
   <div class="sch-scroll">
@@ -414,11 +423,11 @@
                 </a>
               </td>
             {% else %}
-              <td class="sch-cell empty"
+              <td class="sch-cell{% if request.user.is_superuser or request.user.role == 'admin' %} empty{% endif %}"
                   data-staff-id="{{ forloop.counter0 }}"
                   data-time="{{ row.time|time:'H:i' }}"
                   data-time-label="{{ row.label }}"
-                  onclick="openQuickAdd(this)"></td>
+                  {% if request.user.is_superuser or request.user.role == 'admin' %}onclick="openQuickAdd(this)"{% endif %}></td>
             {% endif %}
           {% endfor %}
         </tr>

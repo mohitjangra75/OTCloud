@@ -21,7 +21,7 @@ from clients.models import Client
 # ---------------------------------------------------------------------------
 
 def _admin_or_staff_required(view_func):
-    """Allow only admin or staff role users."""
+    """Allow admin or staff (read-only pages like list + schedule grid)."""
     from functools import wraps
 
     @wraps(view_func)
@@ -29,6 +29,39 @@ def _admin_or_staff_required(view_func):
         user = request.user
         if not (user.is_superuser or user.role in ('admin', 'staff')):
             messages.error(request, "You do not have permission to perform this action.")
+            return redirect('/')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def _admin_required(view_func):
+    """Admin-only actions: create/edit/delete/cancel/reschedule/reassign/complete/mark-absent."""
+    from functools import wraps
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        user = request.user
+        if not (user.is_superuser or user.role == 'admin'):
+            messages.error(request, "Only admins can perform this action.")
+            return redirect('appointments:appointment_list')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def _admin_or_client_required(view_func):
+    """Admin (anyone) OR client (their own — checked inside the view). Blocks staff."""
+    from functools import wraps
+
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        user = request.user
+        if user.role == 'staff':
+            messages.error(request, "Only admins can change appointments. Please contact your admin.")
+            pk = kwargs.get('pk')
+            if pk:
+                return redirect('appointments:appointment_detail', pk=pk)
+            return redirect('appointments:appointment_list')
+        if not user.is_authenticated:
             return redirect('/')
         return view_func(request, *args, **kwargs)
     return wrapper
@@ -127,6 +160,8 @@ class AppointmentDetailView(View):
             'session_count': session_count,
             'is_active': is_active,
             'is_client': user.role == 'client',
+            'is_staff': user.role == 'staff',
+            'is_admin': user.is_superuser or user.role == 'admin',
             'is_staff_or_admin': user.role in ('staff', 'admin') or user.is_superuser,
         }
         return render(request, self.template_name, context)
@@ -136,7 +171,7 @@ class AppointmentDetailView(View):
 # Create
 # ---------------------------------------------------------------------------
 
-@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+@method_decorator([login_required, _admin_required], name='dispatch')
 class AppointmentCreateView(View):
     template_name = 'appointments/appointment_form.html'
 
@@ -159,7 +194,7 @@ class AppointmentCreateView(View):
 # Update
 # ---------------------------------------------------------------------------
 
-@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+@method_decorator([login_required, _admin_required], name='dispatch')
 class AppointmentUpdateView(View):
     template_name = 'appointments/appointment_form.html'
 
@@ -192,7 +227,7 @@ class AppointmentUpdateView(View):
 # Delete (soft)
 # ---------------------------------------------------------------------------
 
-@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+@method_decorator([login_required, _admin_required], name='dispatch')
 class AppointmentDeleteView(View):
     template_name = 'appointments/appointment_confirm_delete.html'
 
@@ -212,7 +247,7 @@ class AppointmentDeleteView(View):
 # Reschedule (both client and staff)
 # ---------------------------------------------------------------------------
 
-@method_decorator([login_required], name='dispatch')
+@method_decorator([login_required, _admin_or_client_required], name='dispatch')
 class AppointmentRescheduleView(View):
     template_name = 'appointments/reschedule.html'
 
@@ -268,7 +303,7 @@ class AppointmentRescheduleView(View):
 # Cancel (both client and staff)
 # ---------------------------------------------------------------------------
 
-@method_decorator([login_required], name='dispatch')
+@method_decorator([login_required, _admin_or_client_required], name='dispatch')
 class AppointmentCancelView(View):
     template_name = 'appointments/appointment_cancel.html'
 
@@ -310,7 +345,7 @@ class AppointmentCancelView(View):
 # Complete (staff/admin only)
 # ---------------------------------------------------------------------------
 
-@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+@method_decorator([login_required, _admin_required], name='dispatch')
 class AppointmentCompleteView(View):
     http_method_names = ['post']
 
@@ -338,6 +373,102 @@ def _parse_date(raw, fallback):
         return datetime.datetime.strptime(raw, '%Y-%m-%d').date()
     except (TypeError, ValueError):
         return fallback
+
+
+def _safe_next_url(request, fallback):
+    """Return POST['next'] if same-host, else fallback URL."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+    nxt = request.POST.get('next') or request.GET.get('next')
+    if nxt and url_has_allowed_host_and_scheme(
+        url=nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure(),
+    ):
+        return nxt
+    return fallback
+
+
+@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+class EmployeeScheduleView(View):
+    """Per-employee weekly schedule: time-slot rows × day columns."""
+    template_name = 'appointments/employee_schedule.html'
+
+    def get(self, request):
+        today = timezone.localdate()
+
+        all_staff = list(
+            User.objects.filter(
+                role__in=['staff', 'admin'], is_active=True,
+            ).order_by('first_name', 'last_name')
+        )
+        if not all_staff:
+            messages.error(request, "No active staff found.")
+            return redirect('appointments:daily_schedule')
+
+        # Selected staff: from query → else self if staff role → else first
+        staff_id = request.GET.get('staff_id')
+        selected_staff = None
+        if staff_id:
+            selected_staff = next((s for s in all_staff if str(s.pk) == str(staff_id)), None)
+        if not selected_staff:
+            selected_staff = (
+                next((s for s in all_staff if s.pk == request.user.pk), None)
+                or all_staff[0]
+            )
+
+        # Week starting Monday
+        default_start = today - datetime.timedelta(days=today.weekday())
+        week_start = _parse_date(request.GET.get('start'), default_start)
+
+        data = AppointmentService.get_employee_week_schedule(selected_staff, week_start, days=7)
+
+        # Build rows for the template
+        rows = []
+        for slot_time, label in data['slots']:
+            cells = [data['grid'].get((d, slot_time)) for d in data['week_dates']]
+            rows.append({'time': slot_time, 'label': label, 'cells': cells})
+
+        # Day headers with hints
+        from attendance.models import AttendanceMark
+        marks_by_date = {
+            m.date: m for m in AttendanceMark.active_objects.filter(
+                user=selected_staff,
+                date__gte=data['week_dates'][0],
+                date__lte=data['week_dates'][-1],
+            )
+        }
+        days = []
+        for d in data['week_dates']:
+            mark = marks_by_date.get(d)
+            days.append({
+                'date': d,
+                'iso': d.isoformat(),
+                'is_today': d == today,
+                'is_past': d < today,
+                'is_weekend': d.weekday() == 6,  # Sunday off
+                'mark': mark,
+            })
+
+        total_hours = data['total_minutes'] // 60
+        total_min_remainder = data['total_minutes'] % 60
+
+        context = {
+            'all_staff': all_staff,
+            'selected_staff': selected_staff,
+            'week_start': week_start,
+            'week_end': data['week_dates'][-1],
+            'days': days,
+            'rows': rows,
+            'today': today,
+            'prev_week': week_start - datetime.timedelta(days=7),
+            'next_week': week_start + datetime.timedelta(days=7),
+            'this_week_start': default_start,
+            'total_appointments': data['total_appointments'],
+            'total_hours': total_hours,
+            'total_min_remainder': total_min_remainder,
+            'pending_count': data['pending_reassignments'],
+            'clients': Client.active_objects.all().order_by('first_name', 'last_name'),
+            'therapy_types': TherapyType.active_objects.all(),
+        }
+        return render(request, self.template_name, context)
 
 
 @method_decorator([login_required, _admin_or_staff_required], name='dispatch')
@@ -389,12 +520,14 @@ class DailyScheduleView(View):
         return render(request, self.template_name, context)
 
 
-@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+@method_decorator([login_required, _admin_required], name='dispatch')
 class ScheduleQuickAddView(View):
     http_method_names = ['post']
 
     def post(self, request):
         target_date = _parse_date(request.POST.get('date'), timezone.localdate())
+        fallback = f"{reverse('appointments:daily_schedule')}?date={target_date}"
+
         raw_time = request.POST.get('start_time', '').strip()
         try:
             start_time = datetime.datetime.strptime(raw_time, '%H:%M:%S').time()
@@ -403,7 +536,7 @@ class ScheduleQuickAddView(View):
                 start_time = datetime.datetime.strptime(raw_time, '%H:%M').time()
             except ValueError:
                 messages.error(request, "Invalid time.")
-                return redirect(f"{reverse('appointments:daily_schedule')}?date={target_date}")
+                return redirect(_safe_next_url(request, fallback))
 
         staff_id = request.POST.get('staff_id')
         client_id = request.POST.get('client_id')
@@ -416,7 +549,7 @@ class ScheduleQuickAddView(View):
 
         if not (staff and client and therapy_type):
             messages.error(request, "Staff, client and therapy type are required.")
-            return redirect(f"{reverse('appointments:daily_schedule')}?date={target_date}")
+            return redirect(_safe_next_url(request, fallback))
 
         try:
             AppointmentService.quick_create(
@@ -433,10 +566,10 @@ class ScheduleQuickAddView(View):
         except AppointmentServiceError as exc:
             messages.error(request, str(exc))
 
-        return redirect(f"{reverse('appointments:daily_schedule')}?date={target_date}")
+        return redirect(_safe_next_url(request, fallback))
 
 
-@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+@method_decorator([login_required, _admin_required], name='dispatch')
 class ScheduleCopyDayView(View):
     http_method_names = ['post']
 
@@ -462,7 +595,7 @@ class ScheduleCopyDayView(View):
         return redirect(f"{reverse('appointments:daily_schedule')}?date={target_date}")
 
 
-@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+@method_decorator([login_required, _admin_required], name='dispatch')
 class AppointmentMarkAbsentView(View):
     http_method_names = ['post']
 
@@ -476,7 +609,7 @@ class AppointmentMarkAbsentView(View):
         return redirect(f"{reverse('appointments:daily_schedule')}?date={redirect_date}")
 
 
-@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+@method_decorator([login_required, _admin_required], name='dispatch')
 class AppointmentQuickReassignView(View):
     """Inline reassign used by the pending-reassignment banner on the schedule."""
     http_method_names = ['post']
@@ -503,7 +636,7 @@ class AppointmentQuickReassignView(View):
         return redirect(request.META.get('HTTP_REFERER') or reverse('appointments:daily_schedule'))
 
 
-@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
+@method_decorator([login_required, _admin_required], name='dispatch')
 class AppointmentReassignView(View):
     template_name = 'appointments/reassign.html'
 

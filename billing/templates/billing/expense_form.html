@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} — OTCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-card {
+    max-width: 720px; margin: 0 auto;
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+    padding: 1.5rem;
+  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .form-label { font-weight: 600; color: #334155; font-size: 0.85rem; }
+  .form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; }
+  @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">{{ title }}</h1>
+  </div>
+  <div class="page-header-right">
+    <a href="{% url 'billing:expense_view' %}" class="btn btn-outline btn-sm">Back to expenses</a>
+  </div>
+</div>
+
+<form method="post" class="form-card">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="alert alert-error">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="form-grid">
+    <div>
+      <label class="form-label">Date</label>
+      {{ form.date }}
+    </div>
+    <div>
+      <label class="form-label">Employee</label>
+      {{ form.paid_to_employee }}
+    </div>
+
+    <div class="full">
+      <label class="form-label">Item</label>
+      {{ form.item }}
+    </div>
+
+    <div class="full">
+      <label class="form-label">Remarks</label>
+      {{ form.remarks }}
+    </div>
+
+    <div>
+      <label class="form-label">Amount (₹)</label>
+      {{ form.amount }}
+    </div>
+    <div>
+      <label class="form-label">Payment Mode</label>
+      {{ form.payment_mode }}
+    </div>
+
+    {# Hidden — kept REIMBURSEMENT in unified flow; admin still toggles paid via list #}
+    {{ form.category.as_hidden }}
+    {{ form.status.as_hidden }}
+    {{ form.paid_to.as_hidden }}
+  </div>
+
+  <div class="form-actions">
+    <a href="{% url 'billing:expense_view' %}" class="btn btn-outline">Cancel</a>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </div>
+</form>
+{% endblock %}

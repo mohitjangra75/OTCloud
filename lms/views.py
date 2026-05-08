@@ -74,6 +74,7 @@ def lead_create(request):
 @login_required
 @_staff_required
 def lead_detail(request, pk):
+    from django.utils import timezone
     lead = get_object_or_404(
         Lead.active_objects.select_related('assigned_to', 'converted_client'),
         pk=pk,
@@ -81,10 +82,33 @@ def lead_detail(request, pk):
     follow_ups = lead.follow_ups.filter(is_deleted=False).order_by('-follow_up_date')
     follow_up_form = FollowUpForm()
 
+    pending_count = follow_ups.filter(status='pending').count()
+    completed_count = follow_ups.filter(status='completed').count()
+    missed_count = follow_ups.filter(status='missed').count()
+    last_completed = follow_ups.filter(status='completed').order_by('-follow_up_date').first()
+    next_pending = follow_ups.filter(status='pending').order_by('follow_up_date').first()
+    age_days = (timezone.now().date() - lead.created_at.date()).days
+
+    journey_stages = ['new', 'contacted', 'interested', 'converted']
+    if lead.status == 'lost':
+        current_idx = -1  # special branch
+    elif lead.status in journey_stages:
+        current_idx = journey_stages.index(lead.status)
+    else:
+        current_idx = 0
+
     return render(request, 'lms/lead_detail.html', {
         'lead': lead,
         'follow_ups': follow_ups,
         'follow_up_form': follow_up_form,
+        'pending_count': pending_count,
+        'completed_count': completed_count,
+        'missed_count': missed_count,
+        'last_completed': last_completed,
+        'next_pending': next_pending,
+        'age_days': age_days,
+        'journey_stages': journey_stages,
+        'current_idx': current_idx,
     })
 
 

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | OTCloud{% endblock %}
+
+{% block extra_css %}
+{% include "analytics/_dash_styles.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="dash-greeting">
+  <h1>Hi, {{ request.user.first_name|default:request.user.mobile_number }}</h1>
+  <div class="date-text">{{ today|date:"l, d F Y" }}</div>
+</div>
+
+{% if today_mark %}
+<div class="client-hero" style="background: linear-gradient(135deg,#4338ca 0%,#6366f1 100%); box-shadow: 0 8px 24px rgba(67, 56, 202, 0.2);">
+  <div class="eyebrow">Today</div>
+  <div class="big-date">
+    {% if today_mark.status == 'half_day' %}You're on Half-day today{% else %}You're marked Absent today{% endif %}
+  </div>
+  <div class="meta">{% if today_mark.notes %}Note: {{ today_mark.notes }}{% else %}Your appointments will not count towards today.{% endif %}</div>
+  <div class="actions">
+    <a href="{% url 'attendance:my_attendance' %}" class="btn btn-sm">Manage my day</a>
+  </div>
+</div>
+{% endif %}
+
+<!-- TODAY STATS -->
+<div class="section-title">Today</div>
+<div class="stat-row four">
+  <div class="stat-tile primary">
+    <div class="eyebrow">Hours logged</div>
+    <div class="big">{{ today_duration_display }}</div>
+    <div class="delta">
+      {% if active_session %}In session since {{ active_session.check_in_time|time:"h:i A" }}
+      {% elif today_sessions_count %}{{ today_sessions_count }} session{{ today_sessions_count|pluralize }}
+      {% else %}Not checked in yet{% endif %}
+    </div>
+  </div>
+  <div class="stat-tile">
+    <div class="eyebrow">Appointments</div>
+    <div class="big">{{ todays_appts_count }}</div>
+    <div class="delta">assigned to you today</div>
+  </div>
+  <div class="stat-tile">
+    <div class="eyebrow">This month</div>
+    <div class="big">{{ month_duration_display }}</div>
+    <div class="delta">{{ month_days_checked_in }} of {{ month_expected_days }} workdays</div>
+  </div>
+  <div class="stat-tile">
+    <div class="eyebrow">Attendance</div>
+    <div class="big">{{ attendance_pct }}%</div>
+    <div class="progress {% if attendance_pct < 50 %}low{% elif attendance_pct < 80 %}mid{% endif %}"><span style="width: {{ attendance_pct }}%;"></span></div>
+  </div>
+</div>
+
+<!-- HOURS TREND -->
+<div class="bars-card">
+  <h3>Hours · last 7 days</h3>
+  <div class="bars">
+    {% for d in hours_trend %}
+    <div class="bar {% if d.is_today %}today{% endif %}" title="{{ d.date|date:'l, d M' }} — {{ d.display }}">
+      <div class="bar-fill" style="height: {% if d.pct < 5 %}5{% else %}{{ d.pct }}{% endif %}%;"></div>
+      {% if d.pct > 10 %}<div class="bar-value">{{ d.display }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="bar-labels">
+    {% for d in hours_trend %}
+    <div class="bar-label {% if d.is_today %}today{% endif %}">{{ d.label }}</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- TODAY'S SCHEDULE + UPCOMING -->
+<div class="split-2">
+  <div class="list-card">
+    <div class="list-head">
+      <h3>Today's schedule</h3>
+      <span class="list-sub">view-only</span>
+    </div>
+    {% for a in todays_appts %}
+    <a class="list-item" href="{% url 'appointments:appointment_detail' pk=a.pk %}" style="text-decoration: none; color: inherit;">
+      <span class="list-time">{{ a.start_time|time:"h:i A" }}</span>
+      <div class="list-main">
+        <div class="list-name">{{ a.client.full_name }}</div>
+        <div class="list-sub">{% if a.therapy_type %}{{ a.therapy_type.name }} · {{ a.therapy_type.duration }} min{% endif %}</div>
+      </div>
+      <span class="pill {{ a.status }}">{{ a.get_status_display }}</span>
+    </a>
+    {% empty %}
+    <div class="list-empty">No appointments assigned to you today.</div>
+    {% endfor %}
+  </div>
+
+  <div class="list-card">
+    <div class="list-head">
+      <h3>Upcoming</h3>
+      <a class="link" href="{% url 'appointments:appointment_list' %}">See all →</a>
+    </div>
+    {% for a in upcoming %}
+    <a class="list-item" href="{% url 'appointments:appointment_detail' pk=a.pk %}" style="text-decoration: none; color: inherit;">
+      <span class="list-time" style="font-size: 0.72rem;">{{ a.date|date:"d M" }}<br><span style="color: var(--text-muted, #94a3b8); font-weight: 500;">{{ a.start_time|time:"h:i A" }}</span></span>
+      <div class="list-main">
+        <div class="list-name">{{ a.client.full_name }}</div>
+        <div class="list-sub">{% if a.therapy_type %}{{ a.therapy_type.name }}{% endif %}</div>
+      </div>
+    </a>
+    {% empty %}
+    <div class="list-empty">No upcoming appointments.</div>
+    {% endfor %}
+  </div>
+</div>
+
+{% if upcoming_marks %}
+<div class="list-card">
+  <div class="list-head">
+    <h3>Your planned absences / half-days</h3>
+    <a class="link" href="{% url 'attendance:my_attendance' %}">Manage →</a>
+  </div>
+  {% for m in upcoming_marks %}
+  <div class="list-item">
+    <span class="list-time" style="font-size: 0.72rem;">{{ m.date|date:"d M" }}</span>
+    <div class="list-main">
+      <div class="list-name">{{ m.date|date:"l" }}</div>
+      <div class="list-sub">{% if m.notes %}{{ m.notes }}{% endif %}</div>
+    </div>
+    <span class="pill {% if m.status == 'half_day' %}half_day{% else %}absent{% endif %}">
+      {% if m.status == 'half_day' %}Half-day{% else %}Absent{% endif %}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+  <a href="{% url 'attendance:my_attendance' %}" class="btn btn-primary">My Attendance</a>
+  <a href="{% url 'appointments:daily_schedule' %}" class="btn btn-outline">Team Schedule</a>
+  <a href="{% url 'attendance:history' %}" class="btn btn-outline">Attendance History</a>
+</div>
+{% endblock %}

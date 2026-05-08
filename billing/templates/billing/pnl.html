@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Profit &amp; Loss — OTCloud{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Toolbar */
+  .pnl-toolbar {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+  .nav-card {
+    background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 12px; padding: 0.6rem 0.75rem;
+  }
+  .nav-card .lbl {
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em;
+    color: #94a3b8; font-weight: 700; margin-bottom: 0.4rem;
+  }
+  .nav-row { display: flex; gap: 0.4rem; align-items: center; }
+  .nav-btn {
+    width: 32px; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 7px; background: #f8fafc; color: #475569;
+    border: 1px solid #e5e7eb; text-decoration: none; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .nav-btn:hover { background: #f1f5f9; color: #0f172a; }
+  .nav-input {
+    flex: 1; min-width: 0; padding: 0.4rem 0.55rem;
+    border-radius: 7px; border: 1px solid #e5e7eb; background: #fff;
+    font-weight: 700; font-size: 0.95rem; color: #0f172a; text-align: center;
+  }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #fff; border-radius: 16px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.25rem;
+    overflow: hidden; position: relative;
+  }
+  .hero.loss { background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%); }
+  .hero::after {
+    content: ""; position: absolute; right: -60px; top: -60px;
+    width: 280px; height: 280px; border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+  }
+  .hero-grid { position: relative; z-index: 1;
+    display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;
+  }
+  .hero-left .verdict {
+    display: inline-block; padding: 0.25rem 0.75rem; border-radius: 999px;
+    background: rgba(255,255,255,0.15); color: #fff;
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  .hero-left .period { color: rgba(255,255,255,0.7); font-size: 0.85rem; margin: 0.6rem 0 0.3rem; }
+  .hero-left .pnl-num {
+    font-size: 2.75rem; font-weight: 800; line-height: 1.05;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+  }
+  .hero-tiles {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem;
+  }
+  .hero-tile {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; padding: 0.65rem 0.75rem; min-width: 110px;
+  }
+  .hero-tile .lbl { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.7); font-weight: 600; }
+  .hero-tile .val { font-size: 1.05rem; font-weight: 700; margin-top: 0.2rem; font-variant-numeric: tabular-nums; }
+
+  /* Two-column section */
+  .two-col {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .panel {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+    overflow: hidden;
+  }
+  .panel-head {
+    padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .panel-head h3 { margin: 0; font-size: 0.95rem; color: #0f172a; font-weight: 700; }
+  .panel-head .meta { color: #64748b; font-size: 0.78rem; }
+  .panel-body { padding: 1rem; }
+
+  /* Income breakdown bars */
+  .bar-row { margin-bottom: 0.85rem; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-row .label-line {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.3rem;
+    font-size: 0.85rem;
+  }
+  .bar-row .label-line .name { color: #475569; font-weight: 600; }
+  .bar-row .label-line .amt { font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; }
+  .bar {
+    height: 10px; background: #f1f5f9; border-radius: 999px; overflow: hidden;
+  }
+  .bar .fill {
+    height: 100%; border-radius: 999px;
+    transition: width .3s ease;
+  }
+  .bar-row .pct {
+    display: inline-block; margin-left: 0.5rem; font-size: 0.72rem;
+    color: #94a3b8; font-weight: 600;
+  }
+
+  /* Donut/expense panel */
+  .donut-wrap { position: relative; height: 220px; }
+  .legend { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.6rem; }
+  .legend-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
+  .legend-row .swatch {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.4rem;
+  }
+  .legend-row .name { color: #475569; flex: 1; }
+  .legend-row .amt { font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; }
+
+  /* Trend chart */
+  .trend-wrap { position: relative; height: 280px; }
+
+  /* Yearly hero (smaller) */
+  .yearly-hero {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center;
+    margin-bottom: 1rem;
+  }
+  .yearly-hero .verdict-pill {
+    display: inline-block; padding: 0.2rem 0.65rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .verdict-pill.profit { background: #dcfce7; color: #15803d; }
+  .verdict-pill.loss { background: #fee2e2; color: #b91c1c; }
+  .yearly-hero .num {
+    font-size: 1.75rem; font-weight: 800; color: #0f172a;
+    font-variant-numeric: tabular-nums; margin-top: 0.4rem;
+  }
+  .yearly-hero .num.profit { color: #15803d; }
+  .yearly-hero .num.loss { color: #b91c1c; }
+
+  /* Detail table */
+  .year-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; background: #fff; }
+  .year-table thead th {
+    background: #f8fafc; color: #64748b; font-weight: 700;
+    padding: 0.65rem 0.75rem; text-align: right;
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .year-table thead th:first-child { text-align: left; }
+  .year-table tbody td {
+    padding: 0.7rem 0.75rem; border-bottom: 1px solid #f1f5f9;
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
+  .year-table tbody td:first-child { text-align: left; font-weight: 600; color: #0f172a; }
+  .year-table tbody tr:hover td { background: #fafafa; }
+  .year-table tfoot td {
+    padding: 0.85rem 0.75rem; font-weight: 800; color: #0f172a;
+    border-top: 2px solid #475569; background: #f8fafc;
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
+  .year-table tfoot td:first-child { text-align: left; }
+  .pos { color: #15803d; }
+  .neg { color: #b91c1c; }
+  /* Profit/Loss cells in the P/L column get a colored background for at-a-glance scanning */
+  .year-table tbody td.pos {
+    background: #ecfdf5;
+    color: #15803d;
+    font-weight: 800;
+  }
+  .year-table tbody td.neg {
+    background: #fef2f2;
+    color: #b91c1c;
+    font-weight: 800;
+  }
+  .year-table tbody tr:hover td.pos { background: #d1fae5; }
+  .year-table tbody tr:hover td.neg { background: #fee2e2; }
+  .year-table tfoot td.pos {
+    background: #d1fae5; color: #14532d; font-weight: 800;
+  }
+  .year-table tfoot td.neg {
+    background: #fee2e2; color: #7f1d1d; font-weight: 800;
+  }
+  .scroll-x { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+
+  @media (max-width: 768px) {
+    .pnl-toolbar { grid-template-columns: 1fr; }
+    .hero { padding: 1.1rem; }
+    .hero-grid { grid-template-columns: 1fr; gap: 1rem; }
+    .hero-left .pnl-num { font-size: 2.1rem; }
+    .hero-tiles { grid-template-columns: repeat(3, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .donut-wrap { height: 200px; }
+    .trend-wrap { height: 240px; }
+    .year-table { font-size: 0.78rem; }
+    .year-table thead th, .year-table tbody td, .year-table tfoot td { padding: 0.5rem 0.4rem; }
+    .yearly-hero { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    .hero-tiles { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Profit &amp; Loss</h1>
+    <p class="page-subtitle" style="color:#64748b;">Year-based view of sessions income, expenses, and bottom line.</p>
+  </div>
+  <div class="page-header-right" style="display:flex; gap:0.5rem;">
+    <a href="{% url 'billing:monthly_view' %}" class="btn btn-outline btn-sm">Billing</a>
+    <a href="{% url 'billing:expense_view' %}" class="btn btn-outline btn-sm">Expenses</a>
+  </div>
+</div>
+
+<!-- Toolbar: Month (drives hero) + Year (drives chart + table) -->
+<form method="get" action="{% url 'billing:pnl_view' %}" class="pnl-toolbar">
+  <div class="nav-card">
+    <div class="lbl">Month (Hero)</div>
+    <div class="nav-row">
+      <a class="nav-btn" href="?month={{ prev_month }}&year={{ year_value }}">&lsaquo;</a>
+      <input type="month" name="month" value="{{ month|date:'Y-m' }}" class="nav-input" onchange="this.form.submit()" aria-label="Pick month">
+      <a class="nav-btn" href="?month={{ next_month }}&year={{ year_value }}">&rsaquo;</a>
+    </div>
+  </div>
+  <div class="nav-card">
+    <div class="lbl">Year (Chart &amp; Table)</div>
+    <div class="nav-row">
+      <a class="nav-btn" href="?month={{ month|date:'Y-m' }}&year={{ prev_year }}">&lsaquo;</a>
+      <input type="number" name="year" value="{{ year_value }}" min="2000" max="2100" class="nav-input" onchange="this.form.submit()">
+      <a class="nav-btn" href="?month={{ month|date:'Y-m' }}&year={{ next_year }}">&rsaquo;</a>
+    </div>
+  </div>
+</form>
+
+<!-- ==================== MONTHLY HERO ==================== -->
+<div class="hero {% if monthly.profit_loss < 0 %}loss{% endif %}">
+  <div class="hero-grid">
+    <div class="hero-left">
+      <span class="verdict">
+        {% if monthly.profit_loss < 0 %}Loss{% else %}Profit{% endif %} • {{ monthly.period }}
+      </span>
+      <div class="period">Net result for the month</div>
+      <div class="pnl-num">{% if monthly.profit_loss < 0 %}−{% endif %}₹{{ monthly.profit_loss|floatformat:0|intcomma|cut:"-" }}</div>
+    </div>
+    <div class="hero-tiles">
+      <div class="hero-tile">
+        <div class="lbl">Income</div>
+        <div class="val">₹{{ monthly.total_income|floatformat:0|intcomma }}</div>
+      </div>
+      <div class="hero-tile">
+        <div class="lbl">Expenses</div>
+        <div class="val">₹{{ monthly.total_expenses|floatformat:0|intcomma }}</div>
+      </div>
+      <div class="hero-tile">
+        <div class="lbl">Sessions</div>
+        <div class="val">{{ monthly.session_count }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== INCOME VS EXPENSES (12 months) ==================== -->
+<div class="panel" style="margin-bottom:1.25rem;">
+  <div class="panel-head">
+    <h3>Income vs Expenses — {{ yearly.year }}</h3>
+    <span class="meta">Avg / session: ₹{{ yearly_avg_per_session|intcomma }}</span>
+  </div>
+  <div class="panel-body">
+    <div class="trend-wrap"><canvas id="ieChart"></canvas></div>
+  </div>
+</div>
+
+<!-- ==================== DETAIL TABLE ==================== -->
+<div class="scroll-x">
+  <table class="year-table">
+    <thead>
+      <tr>
+        <th>Month</th>
+        <th>Sessions</th>
+        <th>Total Income</th>
+        <th>Expenses</th>
+        <th>P / L</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in yearly.months %}
+      <tr>
+        <td>{{ m.start|date:"M Y" }}</td>
+        <td>{{ m.session_count }}</td>
+        <td>₹{{ m.total_income|floatformat:0|intcomma }}</td>
+        <td>₹{{ m.total_expenses|floatformat:0|intcomma }}</td>
+        <td class="{% if m.profit_loss < 0 %}neg{% elif m.profit_loss > 0 %}pos{% endif %}">
+          ₹{{ m.profit_loss|floatformat:0|intcomma }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>{{ yearly.year }} Total</td>
+        <td>{{ yearly.session_count }}</td>
+        <td>₹{{ yearly.total_income|floatformat:0|intcomma }}</td>
+        <td>₹{{ yearly.total_expenses|floatformat:0|intcomma }}</td>
+        <td class="{% if yearly.profit_loss < 0 %}neg{% else %}pos{% endif %}">
+          ₹{{ yearly.profit_loss|floatformat:0|intcomma }}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+{{ chart_data|json_script:"pnl-chart-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  (function () {
+    var data = JSON.parse(document.getElementById('pnl-chart-data').textContent);
+
+    // Income vs Expenses — 12 months for the selected year
+    var ieEl = document.getElementById('ieChart');
+    if (ieEl) {
+      new Chart(ieEl, {
+        type: 'bar',
+        data: {
+          labels: data.monthLabels,
+          datasets: [
+            {
+              label: 'Income',
+              data: data.incomeSeries,
+              backgroundColor: '#0d9488',
+              borderRadius: 6,
+              borderSkipped: false,
+            },
+            {
+              label: 'Expenses',
+              data: data.expenseSeries,
+              backgroundColor: '#ef4444',
+              borderRadius: 6,
+              borderSkipped: false,
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 12 } } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return ctx.dataset.label + ': ₹' + ctx.parsed.y.toLocaleString('en-IN');
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                autoSkip: false,
+                font: { size: 12, weight: 600 },
+                color: '#475569',
+              },
+            },
+            y: {
+              beginAtZero: true,
+              suggestedMax: 150000,
+              ticks: {
+                stepSize: 10000,
+                font: { size: 12 },
+                color: '#475569',
+                callback: function(v){
+                  if (v === 0) return '0';
+                  if (v >= 100000) return (v / 100000) + 'L';
+                  return (v / 1000) + 'k';
+                },
+              },
+            },
+          }
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

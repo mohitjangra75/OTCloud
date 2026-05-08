@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Salary — {{ month_label }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .toolbar-card {
+    background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 12px; padding: 0.75rem; margin-bottom: 1rem;
+  }
+  .month-row { display: flex; gap: 0.5rem; align-items: center; }
+  .month-nav-btn {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 8px; background: #f8fafc; color: #475569;
+    border: 1px solid #e5e7eb; text-decoration: none; font-weight: 700; flex-shrink: 0;
+  }
+  .month-nav-btn:hover { background: #f1f5f9; color: #0f172a; }
+  .month-picker {
+    padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #e5e7eb;
+    background: #fff; flex: 1; min-width: 0; text-align: center;
+    font-weight: 700; font-size: 1rem; color: #0f172a;
+  }
+
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.55rem; margin-bottom: 1rem; }
+  .stat-tile { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 0.75rem 0.85rem; }
+  .stat-tile .lbl { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; }
+  .stat-tile .val { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-top: 0.2rem; font-variant-numeric: tabular-nums; }
+  .stat-tile.t-salary { border-left: 4px solid #6366f1; }
+  .stat-tile.t-deduction { border-left: 4px solid #ef4444; }
+  .stat-tile.t-incentive { border-left: 4px solid #16a34a; }
+  .stat-tile.t-net { border-left: 4px solid #0d9488; }
+
+  .ledger { width: 100%; border-collapse: collapse; background: #fff; font-size: 0.85rem; }
+  .ledger thead th {
+    background: #f1f5f9; color: #0f172a; font-weight: 700;
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 0.55rem 0.5rem; border: 1px solid #cbd5e1;
+    text-align: center; vertical-align: middle;
+  }
+  .ledger thead th.col-emp { background: #fef3c7; color: #92400e; text-align: left; }
+  .ledger thead th.col-a { background: #fee2e2; color: #b91c1c; }
+  .ledger thead th.col-p { background: #dcfce7; color: #15803d; }
+  .ledger thead th.col-s { background: #cffafe; color: #155e75; }
+  .ledger thead th.col-incentive { background: #ecfccb; color: #4d7c0f; }
+  .ledger thead th.col-net { background: #cffafe; color: #0e7490; }
+
+  .ledger tbody td {
+    padding: 0.85rem 0.6rem; border: 1px solid #e2e8f0; vertical-align: middle;
+    line-height: 1.4; text-align: center; font-variant-numeric: tabular-nums;
+  }
+  .ledger tbody td.emp { text-align: left; font-weight: 700; color: #0f172a; }
+  .ledger tbody td.num { text-align: right; }
+  .ledger tbody td.in-hand {
+    background: #ecfdf5; color: #065f46; font-weight: 800;
+  }
+  .ledger tbody tr:hover td { background: #fafafa; }
+  .ledger tbody tr:hover td.in-hand { background: #d1fae5; }
+
+  .pill {
+    display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
+    font-size: 0.72rem; font-weight: 700;
+  }
+  .pill.absent { background: #fee2e2; color: #b91c1c; }
+  .pill.present { background: #dcfce7; color: #15803d; }
+  .pill.half { background: #fef3c7; color: #854d0e; }
+
+  .scroll-x { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+
+  .grand-row td {
+    background: #f8fafc !important; font-weight: 800; color: #0f172a;
+    border-top: 2px solid #475569 !important; padding: 1rem 0.6rem !important;
+  }
+  .grand-row td.in-hand { background: #d1fae5 !important; color: #065f46; }
+
+  @media (max-width: 768px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .ledger { font-size: 0.78rem; }
+    .ledger thead th, .ledger tbody td { padding: 0.45rem 0.35rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Employee Salary</h1>
+    <p class="page-subtitle" style="color:#64748b;">Auto-computed from attendance + completed sessions.</p>
+  </div>
+  <div class="page-header-right" style="color:#94a3b8; font-size:0.8rem;">
+    Click <strong>Rules</strong> on any row to configure that employee's salary.
+  </div>
+</div>
+
+<form method="get" action="{% url 'salary:salary_list' %}" class="toolbar-card">
+  <div class="month-row">
+    <a class="month-nav-btn" href="?month={{ prev_month }}">&lsaquo;</a>
+    <input type="month" name="month" value="{{ month|date:'Y-m' }}" class="month-picker" onchange="this.form.submit()" aria-label="Pick month">
+    <a class="month-nav-btn" href="?month={{ next_month }}">&rsaquo;</a>
+  </div>
+</form>
+
+<div class="stats-row">
+  <div class="stat-tile t-salary">
+    <div class="lbl">Total Payroll</div>
+    <div class="val">₹{{ summary.salary|floatformat:0|intcomma }}</div>
+  </div>
+  <div class="stat-tile t-deduction">
+    <div class="lbl">Deductions</div>
+    <div class="val">₹{{ summary.deduction|floatformat:0|intcomma }}</div>
+  </div>
+  <div class="stat-tile t-incentive">
+    <div class="lbl">Incentives ({{ summary.extra_sessions }} extra)</div>
+    <div class="val">₹{{ summary.incentive|floatformat:0|intcomma }}</div>
+  </div>
+  <div class="stat-tile t-net">
+    <div class="lbl">Net Payable</div>
+    <div class="val">₹{{ summary.in_hand|floatformat:0|intcomma }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body" style="padding:0;">
+    <div class="scroll-x">
+      <table class="ledger">
+        <thead>
+          <tr>
+            <th class="col-emp">Employee</th>
+            <th>Total Days</th>
+            <th class="col-a">A</th>
+            <th class="col-p">P</th>
+            <th class="col-s">Half</th>
+            <th>Base Salary</th>
+            <th>Deduction</th>
+            <th>Sessions</th>
+            <th>Extra</th>
+            <th class="col-incentive">Incentive</th>
+            <th class="col-net">In-Hand</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td class="emp">{{ r.employee.get_full_name|default:r.employee.mobile_number }}</td>
+            <td>{{ r.total_working_days }}</td>
+            <td><span class="pill absent">{{ r.absent_days }}</span></td>
+            <td><span class="pill present">{{ r.present_days }}</span></td>
+            <td><span class="pill half">{{ r.half_days }}</span></td>
+            <td class="num">₹{{ r.base_monthly_salary|floatformat:0|intcomma }}</td>
+            <td class="num">₹{{ r.deduction|floatformat:0|intcomma }}</td>
+            <td>{{ r.total_sessions }}</td>
+            <td>{{ r.extra_sessions }}</td>
+            <td class="num">₹{{ r.incentive|floatformat:0|intcomma }}</td>
+            <td class="in-hand">₹{{ r.in_hand_salary|floatformat:0|intcomma }}</td>
+            <td>
+              <a href="{% url 'salary:settings_edit' employee_id=r.employee_id %}" class="btn btn-sm btn-secondary" style="padding:0.3rem 0.55rem; font-size:0.72rem;">Rules</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="12" style="padding:2.5rem 1rem; text-align:center; color:#94a3b8;">
+            No active staff or admin users yet.
+          </td></tr>
+          {% endfor %}
+          {% if rows %}
+          <tr class="grand-row">
+            <td class="emp">Total</td>
+            <td colspan="4"></td>
+            <td class="num">₹{{ summary.salary|floatformat:0|intcomma }}</td>
+            <td class="num">₹{{ summary.deduction|floatformat:0|intcomma }}</td>
+            <td>{{ summary.sessions }}</td>
+            <td>{{ summary.extra_sessions }}</td>
+            <td class="num">₹{{ summary.incentive|floatformat:0|intcomma }}</td>
+            <td class="in-hand">₹{{ summary.in_hand|floatformat:0|intcomma }}</td>
+            <td></td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

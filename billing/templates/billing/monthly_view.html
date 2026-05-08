@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Billing — {{ month_label }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Toolbar */
+  .toolbar-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .month-row {
+    display: flex; gap: 0.5rem; align-items: center;
+  }
+  .month-nav-btn {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 8px; background: #f8fafc; color: #475569;
+    border: 1px solid #e5e7eb; text-decoration: none; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .month-nav-btn:hover { background: #f1f5f9; color: #0f172a; }
+  .month-picker {
+    padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #e5e7eb;
+    background: #fff; flex: 1; min-width: 0; text-align: center;
+    font-weight: 700; font-size: 1rem; color: #0f172a;
+  }
+  .client-filter {
+    padding: 0.5rem 0.6rem; border-radius: 8px; border: 1px solid #e5e7eb;
+    background: #fff; font-weight: 500; color: #0f172a; min-width: 160px;
+    flex-shrink: 0;
+  }
+
+  /* Stat tiles */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.55rem; margin-bottom: 1rem; }
+  .stat-tile { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 0.75rem 0.85rem; }
+  .stat-tile .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; }
+  .stat-tile .stat-value { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-top: 0.2rem; font-variant-numeric: tabular-nums; }
+  .stat-tile.t-billed { border-left: 4px solid #0d9488; }
+  .stat-tile.t-paid { border-left: 4px solid #16a34a; }
+  .stat-tile.t-carry { border-left: 4px solid #f59e0b; }
+  .stat-tile.t-due { border-left: 4px solid #ef4444; }
+
+  /* Spreadsheet */
+  .ledger { width: 100%; border-collapse: collapse; background: #fff; font-size: 0.85rem; }
+  .ledger thead th {
+    background: #f1f5f9; color: #0f172a; font-weight: 700;
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 0.5rem 0.4rem; border: 1px solid #cbd5e1;
+    text-align: center; vertical-align: middle;
+  }
+  .ledger tbody td { padding: 0.85rem 0.6rem; border: 1px solid #e2e8f0; vertical-align: middle; line-height: 1.4; }
+  .ledger tbody tr.client-row td { border-top: 2px solid #cbd5e1; padding-top: 1rem; }
+  .ledger tbody tr { transition: background-color .12s ease; }
+  .ledger tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .ledger tbody td.cen { text-align: center; }
+  .ledger tbody td.cli { font-weight: 600; color: #0f172a; }
+  .ledger tbody td.therapy { color: #475569; }
+  .ledger tbody tr[data-band="0"] td { background: #fefce8; }
+  .ledger tbody tr[data-band="1"] td { background: #ecfeff; }
+  .ledger tbody tr[data-band="2"] td { background: #fdf4ff; }
+  .ledger tbody tr[data-band="3"] td { background: #f0fdf4; }
+  .ledger tbody tr[data-band="4"] td { background: #fff7ed; }
+  .ledger tbody tr[data-band="5"] td { background: #eff6ff; }
+
+  .status-pill { display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
+  .status-pill.unpaid { background: #fee2e2; color: #b91c1c; }
+  .status-pill.partial { background: #fef3c7; color: #854d0e; }
+  .status-pill.paid { background: #dcfce7; color: #15803d; }
+
+  .row-actions { display: inline-flex; gap: 0.3rem; }
+  .row-actions .btn { padding: 0.3rem 0.55rem; font-size: 0.72rem; }
+
+  /* Inline add row — cells live in the outer table so widths align with the header */
+  .inline-add-row td {
+    background: #fffbeb !important;
+    border-top: 2px dashed #fbbf24 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 0.35rem 0.3rem !important;
+    vertical-align: middle;
+  }
+  .inline-add-row td.muted {
+    color: #94a3b8; font-size: 0.72rem; font-style: italic;
+  }
+  .inline-add-row input, .inline-add-row select {
+    width: 100%; padding: 0.3rem 0.35rem; font-size: 0.78rem;
+    border: 1px solid #e5e7eb; border-radius: 5px; background: #fff;
+    box-sizing: border-box;
+  }
+  .inline-add-row input:focus, .inline-add-row select:focus {
+    outline: none; border-color: #0d9488; box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
+  }
+  .inline-add-row .add-btn {
+    background: #0d9488; color: #fff; border: none; border-radius: 6px;
+    padding: 0.4rem 0.5rem; font-weight: 700; cursor: pointer; width: 100%;
+    font-size: 0.78rem;
+  }
+  .inline-add-row .add-btn:hover { background: #0f766e; }
+
+  .scroll-x { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+
+  /* Mobile responsive */
+  @media (max-width: 768px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .ledger { font-size: 0.78rem; }
+    .ledger thead th { padding: 0.45rem 0.35rem; }
+    .ledger tbody td { padding: 0.65rem 0.45rem; }
+    .month-row { flex-wrap: wrap; }
+    .client-filter { width: 100%; flex: 1 0 100%; order: -1; margin-bottom: 0.4rem; }
+  }
+  @media (max-width: 480px) {
+    .month-picker { font-size: 0.9rem; padding: 0.4rem 0.5rem; }
+  }
+
+  /* Payment popover */
+  .pay-popover {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.5); z-index: 1000;
+    display: none; align-items: center; justify-content: center;
+  }
+  .pay-popover.open { display: flex; }
+  .pay-card {
+    background: #fff; border-radius: 12px; max-width: 420px; width: calc(100% - 2rem);
+    padding: 1.25rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+  }
+  .pay-card h3 { margin: 0 0 0.6rem; font-size: 1.05rem; color: #0f172a; }
+  .pay-card .row { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
+  .pay-card .row > div { flex: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Billing</h1>
+    <p class="page-subtitle" style="color:#64748b;">Monthly per-client session ledger</p>
+  </div>
+  {% if is_admin %}
+  <div class="page-header-right" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+    <a href="{% url 'billing:invoice_list' %}" class="btn btn-outline btn-sm">Invoices</a>
+    <a href="{% url 'billing:expense_view' %}?month={{ month|date:'Y-m' }}" class="btn btn-outline btn-sm">Expenses</a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Toolbar: month nav + clients filter (right of month) -->
+<form method="get" action="{% url 'billing:monthly_view' %}" class="toolbar-card">
+  <div class="month-row">
+    {% if is_admin %}
+    <select name="client" class="client-filter" onchange="this.form.submit()" aria-label="Filter by client">
+      <option value="">All clients</option>
+      {% for c in all_clients %}
+      <option value="{{ c.pk }}" {% if client_filter == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.full_name }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+
+    <a class="month-nav-btn" href="?month={{ prev_month }}{% if client_filter %}&client={{ client_filter }}{% endif %}" title="Previous month">&lsaquo;</a>
+    <input type="month" name="month" value="{{ month|date:'Y-m' }}" class="month-picker" onchange="this.form.submit()" aria-label="Pick month">
+    <a class="month-nav-btn" href="?month={{ next_month }}{% if client_filter %}&client={{ client_filter }}{% endif %}" title="Next month">&rsaquo;</a>
+  </div>
+</form>
+
+{% if is_admin and summary %}
+<div class="stats-row">
+  <div class="stat-tile t-billed">
+    <div class="stat-label">Billed</div>
+    <div class="stat-value">₹{{ summary.billed|floatformat:0|intcomma }}</div>
+  </div>
+  <div class="stat-tile t-paid">
+    <div class="stat-label">Collected</div>
+    <div class="stat-value">₹{{ summary.paid|floatformat:0|intcomma }}</div>
+  </div>
+  <div class="stat-tile t-carry">
+    <div class="stat-label">Carry-fwd</div>
+    <div class="stat-value">₹{{ summary.carry_forward|floatformat:0|intcomma }}</div>
+  </div>
+  <div class="stat-tile t-due">
+    <div class="stat-label">Outstanding</div>
+    <div class="stat-value">₹{{ summary.outstanding|floatformat:0|intcomma }}</div>
+  </div>
+</div>
+{% endif %}
+
+{% if is_admin %}
+<!-- Detached form — referenced by inline-add cells via HTML5 form= attribute -->
+<form id="bill-inline-form" method="post" action="{% url 'billing:bill_inline_create' %}" style="display:none;">
+  {% csrf_token %}
+  <input type="hidden" name="month" value="{{ month|date:'Y-m-d' }}">
+  <input type="hidden" name="month_redirect" value="{{ month|date:'Y-m' }}">
+</form>
+{% endif %}
+
+<div class="card">
+  <div class="card-body" style="padding:0;">
+    <div class="scroll-x">
+      <table class="ledger">
+        <thead>
+          <tr>
+            <th style="width:34px;">#</th>
+            <th style="text-align:left; min-width:140px;">Client Name</th>
+            <th style="text-align:left; min-width:120px;">Session Type</th>
+            <th>Sessions/Wk</th>
+            <th>Total Sessions</th>
+            <th>Package</th>
+            <th>Paid</th>
+            <th>Mode</th>
+            <th>Date</th>
+            <th>Carry</th>
+            <th>Dues</th>
+            <th>Total Due</th>
+            <th>Status</th>
+            {% if is_admin %}<th style="width:115px;">Actions</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for group in grouped_bills %}
+            {% for bill in group.rows %}
+            <tr data-band="{{ group.band }}" {% if forloop.first %}class="client-row"{% endif %}>
+              {% if forloop.first %}
+                <td class="cen" rowspan="{{ group.rows|length }}">{{ forloop.parentloop.counter }}</td>
+                <td class="cli" rowspan="{{ group.rows|length }}">{{ group.client.full_name }}</td>
+              {% endif %}
+              <td class="therapy">{{ bill.therapy_type.name }}</td>
+              <td class="num">{{ bill.sessions_per_week|default:"—" }}</td>
+              <td class="num">{{ bill.total_sessions|default:"—" }}</td>
+              <td class="num">₹{{ bill.package_amount|floatformat:0|intcomma }}</td>
+              <td class="num">₹{{ bill.paid_amount|floatformat:0|intcomma }}</td>
+              <td class="cen">{{ bill.get_payment_mode_display|default:"—" }}</td>
+              <td class="cen">{{ bill.paid_date|date:"d M"|default:"—" }}</td>
+              <td class="num">₹{{ bill.carry_forward|floatformat:0|intcomma }}</td>
+              <td class="num">₹{{ bill.dues_current_month|floatformat:0|intcomma }}</td>
+              <td class="num"><strong>₹{{ bill.total_due|floatformat:0|intcomma }}</strong></td>
+              <td class="cen"><span class="status-pill {{ bill.status }}">{{ bill.get_status_display }}</span></td>
+              {% if is_admin %}
+              <td class="cen">
+                <div class="row-actions">
+                  <button type="button" class="btn btn-sm btn-primary"
+                          onclick="openPayPopover({{ bill.pk }}, '{{ bill.client.full_name|escapejs }}', '{{ bill.therapy_type.name|escapejs }}', '{{ bill.total_due|floatformat:2 }}')">Pay</button>
+                  <a href="{% url 'billing:bill_update' pk=bill.pk %}" class="btn btn-sm btn-secondary">Edit</a>
+                  <form method="post" action="{% url 'billing:bill_delete' pk=bill.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger">×</button>
+                  </form>
+                </div>
+              </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          {% empty %}
+          <tr>
+            <td colspan="{% if is_admin %}14{% else %}13{% endif %}" style="text-align:center; padding:2rem 1rem; color:#64748b;">
+              No billing rows for {{ month_label }}.{% if is_admin %} Add one in the row below.{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+
+          {% if is_admin %}
+          <!-- Inline Excel-style add row — uses HTML5 form= attribute so cells inherit outer-table column widths -->
+          <tr class="inline-add-row">
+            <td class="cen">+</td>
+            <td>
+              <select name="client" form="bill-inline-form" required>
+                <option value="">Client…</option>
+                {% for c in all_clients %}<option value="{{ c.pk }}">{{ c.full_name }}</option>{% endfor %}
+              </select>
+            </td>
+            <td>
+              <select name="therapy_type" form="bill-inline-form" required>
+                <option value="">Therapy…</option>
+                {% for t in therapy_types %}<option value="{{ t.pk }}">{{ t.name }}</option>{% endfor %}
+              </select>
+            </td>
+            <td><input type="number" form="bill-inline-form" name="sessions_per_week" min="0" placeholder="0"></td>
+            <td><input type="number" form="bill-inline-form" name="total_sessions" min="0" placeholder="0"></td>
+            <td><input type="number" form="bill-inline-form" name="package_amount" step="0.01" min="0" placeholder="0"></td>
+            <td><input type="number" form="bill-inline-form" name="paid_amount" step="0.01" min="0" placeholder="0"></td>
+            <td>
+              <select name="payment_mode" form="bill-inline-form">
+                <option value="">—</option>
+                {% for v, l in payment_modes %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+              </select>
+            </td>
+            <td><input type="date" form="bill-inline-form" name="paid_date"></td>
+            <td><input type="number" form="bill-inline-form" name="carry_forward" step="0.01" min="0" placeholder="auto"></td>
+            <td class="cen muted">auto</td>
+            <td class="cen muted">auto</td>
+            <td class="cen muted">—</td>
+            <td><button type="submit" form="bill-inline-form" class="add-btn">Add</button></td>
+          </tr>
+          {% endif %}
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if is_admin %}
+<!-- Payment popover -->
+<div id="pay-popover" class="pay-popover" onclick="if(event.target===this)closePayPopover()">
+  <div class="pay-card">
+    <h3 id="pay-title">Record Payment</h3>
+    <p id="pay-meta" style="color:#64748b; font-size:0.85rem; margin:0 0 0.75rem;"></p>
+    <form id="pay-form" method="post">
+      {% csrf_token %}
+      <div class="row">
+        <div>
+          <label class="form-label" style="font-size:0.75rem;">Amount</label>
+          <input type="number" name="amount" id="pay-amount" step="0.01" min="0.01" class="form-input" required>
+        </div>
+        <div>
+          <label class="form-label" style="font-size:0.75rem;">Mode</label>
+          <select name="payment_mode" class="form-select">
+            <option value="">—</option>
+            {% for v, l in payment_modes %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label class="form-label" style="font-size:0.75rem;">Date</label>
+          <input type="date" name="paid_date" class="form-input" value="{{ today_iso }}">
+        </div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.75rem;">
+        <button type="button" class="btn btn-outline" onclick="closePayPopover()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Record Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openPayPopover(pk, clientName, therapy, due) {
+    var el = document.getElementById('pay-popover');
+    document.getElementById('pay-meta').textContent = clientName + ' — ' + therapy + ' • Due: ₹' + due;
+    document.getElementById('pay-amount').value = due;
+    document.getElementById('pay-form').action = '/billing/' + pk + '/payment/';
+    el.classList.add('open');
+  }
+  function closePayPopover() {
+    document.getElementById('pay-popover').classList.remove('open');
+  }
+</script>
+{% endif %}
+{% endblock %}
