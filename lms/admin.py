@@ -10,7 +10,7 @@ class FollowUpInline(admin.TabularInline):
 
 @admin.register(Lead)
 class LeadAdmin(admin.ModelAdmin):
-    list_display = ['name', 'mobile', 'source', 'status', 'assigned_to', 'created_at']
+    list_display = ['name', 'mobile', 'source', 'status', 'created_at']
     list_filter = ['status', 'source', 'created_at']
     search_fields = ['name', 'mobile', 'email']
     readonly_fields = ['created_at', 'updated_at']

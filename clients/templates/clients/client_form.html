@@ -2,6 +2,66 @@
 
 {% block title %}{{ action }} Client - OTCloud{% endblock %}
 
+{% block extra_css %}
+<style>
+  /* Preferred days — vertical highlight toggles
+     Django renders <div id="id_preferred_days"><div><label><input/>Mon</label></div>...</div> */
+  .pref-days-wrap > div {
+    display: flex; flex-direction: column; gap: 0.4rem;
+  }
+  .pref-days-wrap input[type="checkbox"] {
+    position: absolute; opacity: 0; pointer-events: none;
+    width: 0; height: 0; margin: 0; appearance: none;
+  }
+  .pref-days-wrap label {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; box-sizing: border-box;
+    padding: 0.75rem 1rem; border-radius: 10px;
+    border: 1px solid #e5e7eb; background: #fff;
+    font-weight: 600; font-size: 0.92rem; color: #475569;
+    cursor: pointer; transition: all .15s ease;
+    user-select: none;
+  }
+  .pref-days-wrap label::after {
+    content: "";
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid #cbd5e1;
+    background: #fff;
+    transition: all .15s ease;
+    flex-shrink: 0;
+  }
+  .pref-days-wrap label:hover {
+    border-color: #94a3b8; background: #f8fafc;
+  }
+  /* Selected: highlight the label that contains a :checked input */
+  .pref-days-wrap label:has(input:checked) {
+    background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+    color: #fff; border-color: #4338ca;
+    box-shadow: 0 2px 8px -2px rgba(67, 56, 202, 0.35);
+  }
+  .pref-days-wrap label:has(input:checked)::after {
+    border-color: #fff;
+    background: #fde68a;
+    box-shadow: inset 0 0 0 4px #4338ca, 0 0 0 2px #fde68a;
+  }
+
+  /* Time inputs side-by-side */
+  .pref-time-row { display: flex; gap: 0.6rem; }
+  .pref-time-row > .form-group { flex: 1; }
+
+  /* Section divider for grouping */
+  .form-section-title {
+    font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #64748b;
+    font-weight: 800; margin: 1.5rem 0 0.5rem;
+    padding-top: 1rem; border-top: 1px solid #f1f5f9;
+  }
+  .form-section-title:first-of-type {
+    border-top: none; padding-top: 0; margin-top: 0;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div class="page-header-left">
@@ -22,25 +82,64 @@
       </div>
       {% endif %}
 
+      {# Personal info #}
+      <div class="form-section-title">Personal Info</div>
       {% for field in form %}
-      <div class="form-group {% if field.errors %}has-error{% endif %}">
-        <label for="{{ field.id_for_label }}" class="form-label">
-          {{ field.label }}
-          {% if field.field.required %}<span class="required">*</span>{% endif %}
-        </label>
-        {{ field }}
-        {% if field.help_text %}
-        <p class="form-help">{{ field.help_text }}</p>
+        {% if field.name == 'first_name' or field.name == 'last_name' or field.name == 'mobile_number' or field.name == 'email' or field.name == 'date_of_birth' or field.name == 'gender' %}
+        <div class="form-group {% if field.errors %}has-error{% endif %}">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            {{ field.label }}{% if field.field.required %}<span class="required">*</span>{% endif %}
+          </label>
+          {{ field }}
+          {% for e in field.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        </div>
         {% endif %}
-        {% if field.errors %}
-        <ul class="field-errors">
-          {% for error in field.errors %}
-          <li>{{ error }}</li>
-          {% endfor %}
-        </ul>
-        {% endif %}
-      </div>
       {% endfor %}
+
+      {# Address & medical #}
+      <div class="form-section-title">Address &amp; Medical</div>
+      {% for field in form %}
+        {% if field.name == 'address' or field.name == 'medical_history' %}
+        <div class="form-group {% if field.errors %}has-error{% endif %}">
+          <label class="form-label">{{ field.label }}</label>
+          {{ field }}
+          {% for e in field.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+
+      <div class="form-section-title">Schedule Preference</div>
+      <div class="form-group {% if form.preferred_days.errors %}has-error{% endif %}">
+        <label class="form-label">{{ form.preferred_days.label }}</label>
+        <div class="pref-days-wrap">
+          {{ form.preferred_days }}
+        </div>
+        {% if form.preferred_days.help_text %}<p class="form-help">{{ form.preferred_days.help_text }}</p>{% endif %}
+        {% for e in form.preferred_days.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="pref-time-row">
+        <div class="form-group">
+          <label class="form-label">Preferred Start Time</label>
+          {{ form.preferred_time_start }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Preferred End Time</label>
+          {{ form.preferred_time_end }}
+        </div>
+      </div>
+
+      <div class="form-section-title">Assignment</div>
+      <div class="form-group {% if form.assigned_therapist.errors %}has-error{% endif %}">
+        <label class="form-label">{{ form.assigned_therapist.label }}</label>
+        {{ form.assigned_therapist }}
+        {% if form.assigned_therapist.help_text %}<p class="form-help">{{ form.assigned_therapist.help_text }}</p>{% endif %}
+        {% for e in form.assigned_therapist.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-section-title">Notes</div>
+      <div class="form-group">
+        {{ form.notes }}
+      </div>
 
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">Save</button>

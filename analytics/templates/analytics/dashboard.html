@@ -240,7 +240,7 @@
           <div class="schedule-item">
             <span class="schedule-time">{{ appt.start_time|time:"h:i A" }}</span>
             <div class="schedule-info">
-              <div class="schedule-name">{{ appt.client }}</div>
+              <div class="schedule-name">{{ appt.display_name }}</div>
             </div>
             <span class="badge {% if appt.status == 'scheduled' %}badge-info{% elif appt.status == 'completed' %}badge-success{% elif appt.status == 'cancelled' %}badge-danger{% else %}badge-secondary{% endif %}">{{ appt.get_status_display }}</span>
           </div>
@@ -366,7 +366,7 @@
           <div class="schedule-item">
             <span class="schedule-time">{{ appt.start_time|time:"h:i A" }}</span>
             <div class="schedule-info">
-              <div class="schedule-name">{{ appt.client }}</div>
+              <div class="schedule-name">{{ appt.display_name }}</div>
             </div>
             <span class="badge {% if appt.status == 'scheduled' %}badge-info{% elif appt.status == 'completed' %}badge-success{% elif appt.status == 'cancelled' %}badge-danger{% else %}badge-secondary{% endif %}">{{ appt.get_status_display }}</span>
           </div>

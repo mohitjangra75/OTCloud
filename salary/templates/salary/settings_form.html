@@ -49,23 +49,17 @@
     <div class="full">
       <label class="form-label">Base Monthly Salary (₹)</label>
       {{ form.base_monthly_salary }}
-      <span class="help">Salary if a 6-day working week is fully attended.</span>
+      <span class="help">Salary if a 6-day working week (Mon–Sat) is fully attended. Sundays are not counted.</span>
     </div>
     <div>
       <label class="form-label">Deduction per Absent Day (₹)</label>
       {{ form.deduction_per_absent_day }}
       <span class="help">Cut from base for each absent working day. Half-days = half of this.</span>
     </div>
-    <div></div>
     <div>
-      <label class="form-label">Sessions Target / Week</label>
-      {{ form.sessions_target_per_week }}
-      <span class="help">Sessions per week considered standard. Set 0 to disable incentives.</span>
-    </div>
-    <div>
-      <label class="form-label">Incentive per Extra Session (₹)</label>
-      {{ form.incentive_per_extra_session }}
-      <span class="help">Added for each session beyond the weekly target (summed across weeks).</span>
+      <label class="form-label">Incentive per Rating Star (₹)</label>
+      {{ form.incentive_per_rating_point }}
+      <span class="help">For each rating star received from clients </span>
     </div>
     <div class="full">
       <label class="form-label">Notes</label>

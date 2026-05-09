@@ -27,52 +27,53 @@
   .stat-tile { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 0.75rem 0.85rem; }
   .stat-tile .lbl { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; }
   .stat-tile .val { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-top: 0.2rem; font-variant-numeric: tabular-nums; }
-  .stat-tile.t-salary { border-left: 4px solid #6366f1; }
-  .stat-tile.t-deduction { border-left: 4px solid #ef4444; }
-  .stat-tile.t-incentive { border-left: 4px solid #16a34a; }
-  .stat-tile.t-net { border-left: 4px solid #0d9488; }
+  /* Subtle semantic accent on each stat tile (left border only — keeps the card light) */
+  .stat-tile.t-salary    { border-left: 4px solid #6366f1; }   /* indigo  */
+  .stat-tile.t-deduction { border-left: 4px solid #f87171; }   /* soft red */
+  .stat-tile.t-incentive { border-left: 4px solid #34d399; }   /* soft green */
+  .stat-tile.t-net       { border-left: 4px solid #0d9488; }   /* teal */
 
   .ledger { width: 100%; border-collapse: collapse; background: #fff; font-size: 0.85rem; }
   .ledger thead th {
-    background: #f1f5f9; color: #0f172a; font-weight: 700;
+    background: #f8fafc; color: #475569; font-weight: 700;
     font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em;
-    padding: 0.55rem 0.5rem; border: 1px solid #cbd5e1;
+    padding: 0.55rem 0.5rem; border-bottom: 1px solid #e5e7eb;
     text-align: center; vertical-align: middle;
   }
-  .ledger thead th.col-emp { background: #fef3c7; color: #92400e; text-align: left; }
-  .ledger thead th.col-a { background: #fee2e2; color: #b91c1c; }
-  .ledger thead th.col-p { background: #dcfce7; color: #15803d; }
-  .ledger thead th.col-s { background: #cffafe; color: #155e75; }
-  .ledger thead th.col-incentive { background: #ecfccb; color: #4d7c0f; }
-  .ledger thead th.col-net { background: #cffafe; color: #0e7490; }
+  .ledger thead th.col-emp { text-align: left; }
 
   .ledger tbody td {
-    padding: 0.85rem 0.6rem; border: 1px solid #e2e8f0; vertical-align: middle;
+    padding: 0.85rem 0.6rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle;
     line-height: 1.4; text-align: center; font-variant-numeric: tabular-nums;
   }
-  .ledger tbody td.emp { text-align: left; font-weight: 700; color: #0f172a; }
-  .ledger tbody td.num { text-align: right; }
+  /* Employee is the only column aligned left — everything else stays centered. */
+  .ledger tbody td.emp,
+  .ledger tfoot td.emp { text-align: left; font-weight: 700; color: #0f172a; }
+  .ledger tbody td.num,
+  .ledger tfoot td.num { text-align: center; font-variant-numeric: tabular-nums; }
+  /* Highlight the bottom-line in-hand value with a soft green tint */
   .ledger tbody td.in-hand {
-    background: #ecfdf5; color: #065f46; font-weight: 800;
+    background: #f0fdf4; color: #14532d; font-weight: 800;
   }
   .ledger tbody tr:hover td { background: #fafafa; }
-  .ledger tbody tr:hover td.in-hand { background: #d1fae5; }
+  .ledger tbody tr:hover td.in-hand { background: #dcfce7; }
 
   .pill {
     display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
     font-size: 0.72rem; font-weight: 700;
   }
-  .pill.absent { background: #fee2e2; color: #b91c1c; }
+  /* Soft semantic chips for quick visual scanning */
+  .pill.absent  { background: #fee2e2; color: #b91c1c; }
   .pill.present { background: #dcfce7; color: #15803d; }
-  .pill.half { background: #fef3c7; color: #854d0e; }
+  .pill.half    { background: #fef3c7; color: #854d0e; }
 
   .scroll-x { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
 
   .grand-row td {
     background: #f8fafc !important; font-weight: 800; color: #0f172a;
-    border-top: 2px solid #475569 !important; padding: 1rem 0.6rem !important;
+    border-top: 2px solid #cbd5e1 !important; padding: 1rem 0.6rem !important;
   }
-  .grand-row td.in-hand { background: #d1fae5 !important; color: #065f46; }
+  .grand-row td.in-hand { background: #dcfce7 !important; color: #14532d; }
 
   @media (max-width: 768px) {
     .stats-row { grid-template-columns: repeat(2, 1fr); }
@@ -111,7 +112,7 @@
     <div class="val">₹{{ summary.deduction|floatformat:0|intcomma }}</div>
   </div>
   <div class="stat-tile t-incentive">
-    <div class="lbl">Incentives ({{ summary.extra_sessions }} extra)</div>
+    <div class="lbl">Incentives ({{ summary.ratings }} ratings)</div>
     <div class="val">₹{{ summary.incentive|floatformat:0|intcomma }}</div>
   </div>
   <div class="stat-tile t-net">
@@ -133,8 +134,8 @@
             <th class="col-s">Half</th>
             <th>Base Salary</th>
             <th>Deduction</th>
-            <th>Sessions</th>
-            <th>Extra</th>
+            <th>Avg ★</th>
+            <th>Ratings</th>
             <th class="col-incentive">Incentive</th>
             <th class="col-net">In-Hand</th>
             <th>Actions</th>
@@ -150,8 +151,8 @@
             <td><span class="pill half">{{ r.half_days }}</span></td>
             <td class="num">₹{{ r.base_monthly_salary|floatformat:0|intcomma }}</td>
             <td class="num">₹{{ r.deduction|floatformat:0|intcomma }}</td>
-            <td>{{ r.total_sessions }}</td>
-            <td>{{ r.extra_sessions }}</td>
+            <td>{% if r.avg_rating %}{{ r.avg_rating|floatformat:1 }}★{% else %}—{% endif %}</td>
+            <td>{{ r.total_ratings }}</td>
             <td class="num">₹{{ r.incentive|floatformat:0|intcomma }}</td>
             <td class="in-hand">₹{{ r.in_hand_salary|floatformat:0|intcomma }}</td>
             <td>
@@ -169,8 +170,8 @@
             <td colspan="4"></td>
             <td class="num">₹{{ summary.salary|floatformat:0|intcomma }}</td>
             <td class="num">₹{{ summary.deduction|floatformat:0|intcomma }}</td>
-            <td>{{ summary.sessions }}</td>
-            <td>{{ summary.extra_sessions }}</td>
+            <td></td>
+            <td></td>
             <td class="num">₹{{ summary.incentive|floatformat:0|intcomma }}</td>
             <td class="in-hand">₹{{ summary.in_hand|floatformat:0|intcomma }}</td>
             <td></td>

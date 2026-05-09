@@ -8,8 +8,8 @@ class SalarySetting(CoreModel):
     """Per-employee salary rules. One active config per employee.
 
     Convention: base_monthly_salary is the gross paid when ALL working days
-    (6-day week) are present. Deductions apply per absent day; incentives
-    apply only on sessions that exceed the weekly target.
+    (6-day week) are present. Deductions apply per absent day; incentive is
+    based on the average client rating received that month.
     """
 
     employee = models.OneToOneField(
@@ -26,13 +26,11 @@ class SalarySetting(CoreModel):
         max_digits=10, decimal_places=2, default=0,
         help_text='Amount cut from base for every absent working day (half-days = half this)',
     )
-    sessions_target_per_week = models.PositiveIntegerField(
-        default=0,
-        help_text='Sessions per week considered "as expected". 0 = no target',
-    )
-    incentive_per_extra_session = models.DecimalField(
+    incentive_per_rating_point = models.DecimalField(
         max_digits=10, decimal_places=2, default=0,
-        help_text='Bonus added for each session beyond the weekly target (summed across weeks in the month)',
+        help_text='Bonus per rating star received from clients '
+                  '(e.g., ₹100/point → 5★ rating = ₹500 bonus). '
+                  'Total = sum of stars across all client ratings × this value.',
     )
     notes = models.TextField(blank=True)
 
@@ -44,6 +42,46 @@ class SalarySetting(CoreModel):
 
     def __str__(self):
         return f"Salary config — {self.employee}"
+
+
+class PerformanceRating(CoreModel):
+    """A client's monthly rating of their assigned therapist's performance.
+
+    One rating per (client, therapist, month). Drives the rating-based
+    incentive paid out in the monthly salary.
+    """
+    SCORE_CHOICES = [
+        (1, '1★ Poor'),
+        (2, '2★ Below Average'),
+        (3, '3★ Average'),
+        (4, '4★ Good'),
+        (5, '5★ Excellent'),
+    ]
+
+    client = models.ForeignKey(
+        'clients.Client',
+        on_delete=models.CASCADE,
+        related_name='ratings_given',
+    )
+    therapist = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='ratings_received',
+        limit_choices_to={'role__in': ['staff', 'admin']},
+    )
+    month = models.DateField(help_text='First day of the rated month')
+    score = models.PositiveSmallIntegerField(choices=SCORE_CHOICES)
+    feedback = models.TextField(blank=True)
+
+    objects = models.Manager()
+    active_objects = ActiveManager()
+
+    class Meta:
+        ordering = ['-month', 'therapist__first_name']
+        unique_together = ('client', 'therapist', 'month')
+
+    def __str__(self):
+        return f"{self.client} → {self.therapist} | {self.month:%b %Y} | {self.score}★"
 
 
 class MonthlySalary(CoreModel):
@@ -62,9 +100,14 @@ class MonthlySalary(CoreModel):
     half_days = models.PositiveIntegerField(default=0)
     absent_days = models.PositiveIntegerField(default=0)
     total_sessions = models.PositiveIntegerField(default=0)
-    extra_sessions = models.PositiveIntegerField(
+
+    total_ratings = models.PositiveIntegerField(
         default=0,
-        help_text='Sessions beyond the weekly target across all weeks of the month',
+        help_text='Number of client ratings received this month',
+    )
+    avg_rating = models.DecimalField(
+        max_digits=3, decimal_places=2, default=0,
+        help_text='Average rating across all client feedback this month (0–5)',
     )
 
     base_monthly_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)

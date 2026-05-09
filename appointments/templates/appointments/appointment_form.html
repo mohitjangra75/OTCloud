@@ -2,17 +2,57 @@
 
 {% block title %}{{ action }} Appointment - OTCloud{% endblock %}
 
+{% block extra_css %}
+<style>
+  .warn-box {
+    background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px;
+    padding: 1rem 1.1rem; margin-bottom: 1rem;
+  }
+  .warn-box h4 { margin: 0 0 0.5rem; color: #78350f; font-size: 0.95rem; }
+  .warn-box ul { margin: 0; padding-left: 1.1rem; color: #92400e; font-size: 0.9rem; }
+  .warn-box li { margin-bottom: 0.3rem; }
+  .warn-actions { margin-top: 0.85rem; display: flex; gap: 0.5rem; }
+  /* Inline message shown when no future slots remain for the picked date */
+  .no-slots-msg {
+    display: none;
+    margin-top: 0.4rem; padding: 0.6rem 0.85rem;
+    background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
+    color: #991b1b; font-size: 0.85rem; font-weight: 600;
+  }
+  .no-slots-msg.show { display: block; }
+  .no-slots-msg::before {
+    content: "⏰ "; margin-right: 0.25rem;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div class="page-header-left">
     <h1 class="page-title">{% if appointment %}Edit Appointment{% else %}New Appointment{% endif %}</h1>
+    <p class="page-subtitle" style="color:#64748b;">Trial / walk-in clients are OK — just type the name.</p>
   </div>
 </div>
 
 <div class="card" style="max-width: 640px;">
   <div class="card-body">
+
+    {% if warnings %}
+    <div class="warn-box">
+      <h4>Conflicts detected</h4>
+      <ul>
+        {% for w in warnings %}<li>{{ w }}</li>{% endfor %}
+      </ul>
+      <p style="margin: 0.6rem 0 0; font-size: 0.85rem; color: #78350f;">
+        Click <strong>Save Anyway</strong> below if you still want to schedule this appointment. Leave conflicts will auto-flag the appointment for reassignment.
+      </p>
+    </div>
+    {% endif %}
+
     <form method="post" novalidate>
       {% csrf_token %}
+      {% if lead_id %}<input type="hidden" name="lead_id" value="{{ lead_id }}">{% endif %}
+      {% if confirmation_required %}<input type="hidden" name="confirm" value="1">{% endif %}
 
       {% if form.non_field_errors %}
       <div class="form-errors">
@@ -29,21 +69,22 @@
           {% if field.field.required %}<span class="required">*</span>{% endif %}
         </label>
         {{ field }}
+        {% if field.name == 'start_time' %}
+        <div class="no-slots-msg" id="no-slots-msg">No slots available for today — please pick another date.</div>
+        {% endif %}
         {% if field.help_text %}
         <p class="form-help">{{ field.help_text }}</p>
         {% endif %}
-        {% if field.errors %}
-        <ul class="field-errors">
-          {% for error in field.errors %}
-          <li>{{ error }}</li>
-          {% endfor %}
-        </ul>
-        {% endif %}
+        {% for error in field.errors %}
+          <div class="form-error">{{ error }}</div>
+        {% endfor %}
       </div>
       {% endfor %}
 
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="submit" class="btn btn-primary">
+          {% if confirmation_required %}Save Anyway{% else %}Save{% endif %}
+        </button>
         {% if appointment %}
         <a href="{% url 'appointments:appointment_detail' pk=appointment.pk %}" class="btn btn-outline">Cancel</a>
         {% else %}
@@ -53,4 +94,57 @@
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var dateEl = document.querySelector('input[name="date"]');
+    var slotEl = document.querySelector('select[name="start_time"]');
+    if (!dateEl || !slotEl) return;
+
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    function todayISO() {
+      var d = new Date();
+      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    }
+
+    var msgEl = document.getElementById('no-slots-msg');
+
+    function update() {
+      var selValue = dateEl.value || '';
+      var isToday = selValue === todayISO();
+      var now = new Date();
+      var nowMins = now.getHours() * 60 + now.getMinutes();
+      var visibleCount = 0;
+
+      Array.from(slotEl.options).forEach(function (opt) {
+        if (!opt.value) return; // skip the empty "Pick a slot…" placeholder
+        var parts = opt.value.split(':');
+        var slotMins = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        var inPast = isToday && slotMins <= nowMins;
+        opt.hidden = inPast;
+        opt.disabled = inPast;
+        if (!inPast) visibleCount++;
+      });
+
+      // If the currently chosen option just became hidden, reset selection.
+      var sel = slotEl.selectedOptions[0];
+      if (sel && (sel.hidden || sel.disabled)) {
+        slotEl.value = '';
+      }
+
+      // Show the "no slots available" message + disable the dropdown when zero remain.
+      if (msgEl) {
+        var noneAvail = isToday && visibleCount === 0;
+        msgEl.classList.toggle('show', noneAvail);
+        slotEl.disabled = noneAvail;
+      }
+    }
+
+    dateEl.addEventListener('change', update);
+    dateEl.addEventListener('input', update);
+    update();
+  })();
+</script>
 {% endblock %}

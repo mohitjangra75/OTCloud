@@ -49,18 +49,9 @@
       </li>
 
       {% if request.user.role == 'admin' or request.user.role == 'staff' %}
-      <!-- Attendance -->
-      <li class="sidebar-item">
-        <a href="{% url 'attendance:dashboard' %}" class="sidebar-link {% if '/attendance/' in request.path and '/attendance/me' not in request.path %}active{% endif %}">
-          <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-          </svg>
-          {% if request.user.role == 'admin' %}Team Attendance{% else %}Attendance{% endif %}
-        </a>
-      </li>
+      <li class="sidebar-divider"></li>
 
-      {% if request.user.role == 'admin' %}
-      <!-- My Attendance (admin self check-in) -->
+      <!-- My Attendance -->
       <li class="sidebar-item">
         <a href="{% url 'attendance:my_attendance' %}" class="sidebar-link {% if '/attendance/me' in request.path %}active{% endif %}">
           <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -70,7 +61,16 @@
           My Attendance
         </a>
       </li>
-      {% endif %}
+
+      <!-- Team Attendance -->
+      <li class="sidebar-item">
+        <a href="{% url 'attendance:dashboard' %}" class="sidebar-link {% if '/attendance/' in request.path and '/attendance/me' not in request.path %}active{% endif %}">
+          <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Team Attendance
+        </a>
+      </li>
 
       <li class="sidebar-divider"></li>
 
@@ -87,9 +87,24 @@
         </a>
       </li>
 
+      <!-- Employees -->
+      <li class="sidebar-item">
+        <a href="{% url 'accounts:employee_list' %}" class="sidebar-link {% if '/employees/' in request.path %}active{% endif %}">
+          <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <line x1="19" y1="8" x2="19" y2="14"/>
+            <line x1="22" y1="11" x2="16" y2="11"/>
+          </svg>
+          Employees
+        </a>
+      </li>
+
+      <li class="sidebar-divider"></li>
+
       <!-- Schedule (day-wise grid) -->
       <li class="sidebar-item">
-        <a href="{% url 'appointments:daily_schedule' %}" class="sidebar-link {% if request.resolver_match.url_name == 'daily_schedule' %}active{% endif %}">
+        <a href="{% url 'daily_schedule' %}" class="sidebar-link {% if request.resolver_match.url_name == 'daily_schedule' %}active{% endif %}">
           <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
             <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
@@ -103,7 +118,7 @@
 
       <!-- Employee Schedule (per-employee weekly grid) -->
       <li class="sidebar-item">
-        <a href="{% url 'appointments:employee_schedule' %}" class="sidebar-link {% if request.resolver_match.url_name == 'employee_schedule' %}active{% endif %}">
+        <a href="{% url 'employee_schedule' %}" class="sidebar-link {% if request.resolver_match.url_name == 'employee_schedule' %}active{% endif %}">
           <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
@@ -114,6 +129,8 @@
           Employee Schedule
         </a>
       </li>
+
+      <li class="sidebar-divider"></li>
 
       <!-- Appointments (list / history) -->
       <li class="sidebar-item">
@@ -143,19 +160,6 @@
       </li>
 
       <li class="sidebar-divider"></li>
-
-      <!-- Employees -->
-      <li class="sidebar-item">
-        <a href="{% url 'accounts:employee_list' %}" class="sidebar-link {% if '/employees/' in request.path %}active{% endif %}">
-          <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <line x1="19" y1="8" x2="19" y2="14"/>
-            <line x1="22" y1="11" x2="16" y2="11"/>
-          </svg>
-          Employees
-        </a>
-      </li>
 
       {% if request.user.role == 'admin' %}
       <!-- Billing -->
@@ -204,12 +208,21 @@
       </li>
       <!-- Salary (admin) -->
       <li class="sidebar-item">
-        <a href="{% url 'salary:salary_list' %}" class="sidebar-link {% if '/salary/' in request.path %}active{% endif %}">
+        <a href="{% url 'salary:salary_list' %}" class="sidebar-link {% if '/salary/' in request.path and '/salary/ratings' not in request.path %}active{% endif %}">
           <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="1" x2="12" y2="23"/>
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
           </svg>
           Salary
+        </a>
+      </li>
+      <!-- Performance Ratings (admin) -->
+      <li class="sidebar-item">
+        <a href="{% url 'salary:ratings_list' %}" class="sidebar-link {% if '/salary/ratings' in request.path %}active{% endif %}">
+          <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          Ratings
         </a>
       </li>
       {% elif request.user.role == 'staff' %}
@@ -237,6 +250,8 @@
       {% endif %}
 
       {% if request.user.role == 'client' %}
+      <li class="sidebar-divider"></li>
+
       <!-- Client: Appointments -->
       <li class="sidebar-item">
         <a href="{% url 'appointments:appointment_list' %}" class="sidebar-link {% if '/appointments/' in request.path %}active{% endif %}">
@@ -272,6 +287,15 @@
             <line x1="9" y1="17" x2="15" y2="17"/>
           </svg>
           Invoices
+        </a>
+      </li>
+      <!-- Client: Rate Therapist -->
+      <li class="sidebar-item">
+        <a href="{% url 'salary:rate_my_therapist' %}" class="sidebar-link {% if '/salary/rate' in request.path %}active{% endif %}">
+          <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          Rate Therapist
         </a>
       </li>
       {% endif %}

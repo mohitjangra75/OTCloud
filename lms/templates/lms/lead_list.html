@@ -69,12 +69,40 @@
     color: var(--text-muted, #9ca3af);
   }
 
+  /* Center-align table contents */
+  .desktop-table { width: 100%; }
+  .desktop-table thead th,
+  .desktop-table tbody td {
+    text-align: center;
+    vertical-align: middle;
+  }
+  .desktop-table .table-actions-cell { justify-content: center; }
+  .desktop-table .status-inline { display: inline-block; }
+  .desktop-table form { display: inline-block; }
+
   /* Status badges */
   .badge-new { background: #dbeafe; color: #1d4ed8; }
   .badge-contacted { background: #fef3c7; color: #92400e; }
   .badge-interested { background: #ffedd5; color: #c2410c; }
   .badge-converted { background: #dcfce7; color: #15803d; }
   .badge-lost { background: #fee2e2; color: #b91c1c; }
+
+  /* Inline status dropdown — color-matched to status */
+  .status-inline {
+    font-weight: 700; font-size: 0.78rem;
+    padding: 0.35rem 0.6rem; border-radius: 999px;
+    border: 1px solid transparent;
+    cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='1 1 5 5 9 1'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 0.55rem center;
+    padding-right: 1.6rem;
+  }
+  .status-inline.status-new { background-color: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+  .status-inline.status-contacted { background-color: #fef3c7; color: #92400e; border-color: #fde68a; }
+  .status-inline.status-interested { background-color: #ffedd5; color: #c2410c; border-color: #fed7aa; }
+  .status-inline.status-converted { background-color: #dcfce7; color: #15803d; border-color: #bbf7d0; }
+  .status-inline.status-lost { background-color: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+  .status-inline option { color: #0f172a; background: #fff; }
 
   /* Mobile cards */
   .mobile-cards { display: none; }
@@ -184,9 +212,8 @@
             <th>Name</th>
             <th>Mobile</th>
             <th>Source</th>
-            <th>Status</th>
-            <th>Assigned To</th>
-            <th>Actions</th>
+            <th style="min-width:160px;">Status</th>
+            <th style="min-width:170px;">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -196,12 +223,19 @@
             <td>{{ lead.mobile }}</td>
             <td>{{ lead.get_source_display }}</td>
             <td>
-              <span class="badge badge-{{ lead.status }}">{{ lead.get_status_display }}</span>
+              <form method="post" action="{% url 'lms:lead_status_change' pk=lead.pk %}" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <select name="status" class="form-select status-inline status-{{ lead.status }}" onchange="this.form.submit()" aria-label="Change status">
+                  {% for value, label in status_choices %}
+                  <option value="{{ value }}" {% if lead.status == value %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </form>
             </td>
-            <td>{{ lead.assigned_to.get_full_name|default:"Unassigned" }}</td>
             <td>
               <div class="table-actions-cell">
-                <a href="{% url 'lms:lead_update' pk=lead.pk %}" class="btn btn-sm btn-secondary" title="Edit">Edit</a>
+                <a href="{% url 'lms:lead_to_appointment' pk=lead.pk %}" class="btn btn-sm btn-primary" title="Create appointment for this lead">Need Appointment →</a>
               </div>
             </td>
           </tr>
@@ -223,10 +257,18 @@
             <span>{{ lead.mobile }}</span>
             <span class="badge badge-{{ lead.source|default:'other' }}">{{ lead.get_source_display }}</span>
           </div>
-          <span>Assigned: {{ lead.assigned_to.get_full_name|default:"Unassigned" }}</span>
         </div>
-        <div class="mobile-card-actions">
-          <a href="{% url 'lms:lead_update' pk=lead.pk %}" class="btn btn-sm btn-secondary">Edit</a>
+        <div class="mobile-card-actions" style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+          <form method="post" action="{% url 'lms:lead_status_change' pk=lead.pk %}" style="margin:0; flex:1; min-width:140px;">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <select name="status" class="form-select status-inline status-{{ lead.status }}" onchange="this.form.submit()" aria-label="Change status">
+              {% for value, label in status_choices %}
+              <option value="{{ value }}" {% if lead.status == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </form>
+          <a href="{% url 'lms:lead_to_appointment' pk=lead.pk %}" class="btn btn-sm btn-primary">Need Appointment →</a>
         </div>
       </div>
       {% endfor %}

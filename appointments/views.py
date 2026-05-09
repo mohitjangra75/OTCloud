@@ -171,23 +171,88 @@ class AppointmentDetailView(View):
 # Create
 # ---------------------------------------------------------------------------
 
-@method_decorator([login_required, _admin_required], name='dispatch')
+@method_decorator([login_required, _admin_or_staff_required], name='dispatch')
 class AppointmentCreateView(View):
     template_name = 'appointments/appointment_form.html'
 
+    def _initial_from_query(self, request):
+        """Pre-fill from ?lead_id=&client_name=&client_mobile= query string."""
+        initial = {}
+        for k in ('client_name', 'client_mobile'):
+            v = request.GET.get(k)
+            if v:
+                initial[k] = v
+        return initial
+
     def get(self, request):
-        form = AppointmentForm()
-        return render(request, self.template_name, {'form': form, 'action': 'Create'})
+        form = AppointmentForm(initial=self._initial_from_query(request))
+        return render(request, self.template_name, {
+            'form': form, 'action': 'Create',
+            'lead_id': request.GET.get('lead_id') or '',
+        })
 
     def post(self, request):
         form = AppointmentForm(request.POST)
+        warnings = []
         if form.is_valid():
+            cd = form.cleaned_data
+            # Conflict detection — surface warnings; admin can re-submit with confirm=1 to bypass
+            conflicts = AppointmentService.detect_conflicts(
+                staff=cd['staff'],
+                date_=cd['date'],
+                start_time=cd['start_time'],
+                end_time=cd['end_time'],
+            )
+            confirmed = request.POST.get('confirm') == '1'
+            if conflicts and not confirmed:
+                if 'on_leave' in conflicts:
+                    warnings.append(
+                        f"⚠ {cd['staff'].get_full_name() or cd['staff'].mobile_number} "
+                        f"is on LEAVE on {cd['date']:%d %b}. The appointment will be flagged for reassignment."
+                    )
+                if 'half_day' in conflicts:
+                    warnings.append(
+                        f"ℹ {cd['staff'].get_full_name() or cd['staff'].mobile_number} "
+                        f"is on a HALF-DAY on {cd['date']:%d %b}."
+                    )
+                if 'overlap' in conflicts:
+                    parts = ', '.join(
+                        f"{a.start_time.strftime('%I:%M %p')} {a.display_name}"
+                        for a in conflicts['overlap']
+                    )
+                    warnings.append(
+                        f"⚠ Time conflict: {cd['staff'].get_full_name() or cd['staff'].mobile_number} "
+                        f"already has — {parts}."
+                    )
+                return render(request, self.template_name, {
+                    'form': form, 'action': 'Create',
+                    'warnings': warnings,
+                    'confirmation_required': True,
+                    'lead_id': request.POST.get('lead_id') or '',
+                })
+
             appointment = form.save(commit=False)
             appointment.created_by = request.user
             appointment.save()
-            messages.success(request, "Appointment created successfully.")
-            return redirect('appointments:appointment_detail', pk=appointment.pk)
-        return render(request, self.template_name, {'form': form, 'action': 'Create'})
+
+            # If we came from a Lead, mark it as CONVERTED
+            lead_id = (request.POST.get('lead_id') or '').strip()
+            if lead_id:
+                try:
+                    from lms.models import Lead
+                    lead = Lead.active_objects.filter(pk=lead_id).first()
+                    if lead and lead.status != Lead.Status.CONVERTED:
+                        lead.status = Lead.Status.CONVERTED
+                        lead.save(update_fields=['status', 'updated_at'])
+                except Exception:
+                    pass
+
+            messages.success(request, "Appointment created and added to the schedule.")
+            return redirect(f"/schedule/?date={appointment.date.isoformat()}")
+        return render(request, self.template_name, {
+            'form': form, 'action': 'Create',
+            'lead_id': request.POST.get('lead_id') or '',
+        })
 
 
 # ---------------------------------------------------------------------------
@@ -401,7 +466,7 @@ class EmployeeScheduleView(View):
         )
         if not all_staff:
             messages.error(request, "No active staff found.")
-            return redirect('appointments:daily_schedule')
+            return redirect('daily_schedule')
 
         # Selected staff: from query → else self if staff role → else first
         staff_id = request.GET.get('staff_id')
@@ -526,7 +591,7 @@ class ScheduleQuickAddView(View):
 
     def post(self, request):
         target_date = _parse_date(request.POST.get('date'), timezone.localdate())
-        fallback = f"{reverse('appointments:daily_schedule')}?date={target_date}"
+        fallback = f"{reverse('daily_schedule')}?date={target_date}"
 
         raw_time = request.POST.get('start_time', '').strip()
         try:
@@ -581,7 +646,7 @@ class ScheduleCopyDayView(View):
         )
         if not (target_date and source_date):
             messages.error(request, "Invalid dates for copy.")
-            return redirect('appointments:daily_schedule')
+            return redirect('daily_schedule')
 
         try:
             count = AppointmentService.copy_day(source_date, target_date, created_by=request.user)
@@ -592,7 +657,7 @@ class ScheduleCopyDayView(View):
         except Exception as exc:
             messages.error(request, f"Could not copy schedule: {exc}")
 
-        return redirect(f"{reverse('appointments:daily_schedule')}?date={target_date}")
+        return redirect(f"{reverse('daily_schedule')}?date={target_date}")
 
 
 @method_decorator([login_required, _admin_required], name='dispatch')
@@ -606,7 +671,7 @@ class AppointmentMarkAbsentView(View):
         except AppointmentServiceError as exc:
             messages.error(request, str(exc))
         redirect_date = request.POST.get('date') or timezone.localdate().isoformat()
-        return redirect(f"{reverse('appointments:daily_schedule')}?date={redirect_date}")
+        return redirect(f"{reverse('daily_schedule')}?date={redirect_date}")
 
 
 @method_decorator([login_required, _admin_required], name='dispatch')
@@ -621,7 +686,7 @@ class AppointmentQuickReassignView(View):
         ).first()
         if not new_staff:
             messages.error(request, "Pick a valid staff member.")
-            return redirect(request.META.get('HTTP_REFERER') or reverse('appointments:daily_schedule'))
+            return redirect(request.META.get('HTTP_REFERER') or reverse('daily_schedule'))
 
         try:
             AppointmentService.reassign_staff(
@@ -633,7 +698,7 @@ class AppointmentQuickReassignView(View):
         except AppointmentServiceError as exc:
             messages.error(request, str(exc))
 
-        return redirect(request.META.get('HTTP_REFERER') or reverse('appointments:daily_schedule'))
+        return redirect(request.META.get('HTTP_REFERER') or reverse('daily_schedule'))
 
 
 @method_decorator([login_required, _admin_required], name='dispatch')

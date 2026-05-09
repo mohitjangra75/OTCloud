@@ -17,25 +17,11 @@ class LeadService:
             mobile=data['mobile'],
             email=data.get('email', ''),
             source=data.get('source', Lead.Source.WALK_IN),
+            status=data.get('status', Lead.Status.NEW),
             notes=data.get('notes', ''),
-            assigned_to=data.get('assigned_to'),
             created_by=created_by,
         )
         lead.save()
-        return lead
-
-    @staticmethod
-    @transaction.atomic
-    def assign_lead(lead_id, staff_id):
-        """Assign a lead to a staff member."""
-        lead = Lead.objects.select_for_update().get(pk=lead_id)
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-        staff = User.objects.get(pk=staff_id)
-        lead.assigned_to = staff
-        if lead.status == Lead.Status.NEW:
-            lead.status = Lead.Status.CONTACTED
-        lead.save(update_fields=['assigned_to', 'status', 'updated_at'])
         return lead
 
     @staticmethod
@@ -83,15 +69,30 @@ class LeadService:
         return follow_up
 
     @staticmethod
-    def get_pending_follow_ups(user):
-        """Return pending follow-ups assigned to a user, ordered by date."""
-        return (
+    def get_pending_follow_ups(user=None):
+        """Return pending follow-ups, optionally filtered by creator."""
+        qs = (
             FollowUp.active_objects
             .filter(
-                lead__assigned_to=user,
                 status='pending',
                 follow_up_date__gte=timezone.now(),
             )
             .select_related('lead')
             .order_by('follow_up_date')
         )
+        if user is not None:
+            qs = qs.filter(created_by=user)
+        return qs
+
+    @staticmethod
+    @transaction.atomic
+    def update_status(lead_id, new_status, actor=None):
+        """Inline status change from the leads list."""
+        if new_status not in dict(Lead.Status.choices):
+            raise ValueError('Invalid status.')
+        lead = Lead.objects.select_for_update().get(pk=lead_id)
+        lead.status = new_status
+        if actor:
+            lead.updated_by = actor
+        lead.save(update_fields=['status', 'updated_by', 'updated_at'])
+        return lead

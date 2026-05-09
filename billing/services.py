@@ -262,10 +262,12 @@ class PnLService:
     @staticmethod
     def _income_for_range(start, end_exclusive):
         """Return (total_income, session_count) for completed appointments
-        in [start, end_exclusive)."""
+        in [start, end_exclusive). Trial / walk-in sessions (no linked Client)
+        are always free — excluded from both totals and session count."""
         from appointments.models import Appointment
         qs = Appointment.active_objects.filter(
             status=Appointment.Status.COMPLETED,
+            client__isnull=False,  # exclude trial / walk-in sessions
             date__gte=start, date__lt=end_exclusive,
         )
         total = qs.aggregate(t=Sum('session_price'))['t'] or Decimal('0')

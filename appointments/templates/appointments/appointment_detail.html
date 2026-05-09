@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Appointment - {{ appointment.client.full_name }} - OTCloud{% endblock %}
+{% block title %}Appointment - {{ appointment.display_name }} - OTCloud{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -105,7 +105,7 @@
 <!-- Header -->
 <div class="appt-header">
   <div class="appt-header-top">
-    <h1>{{ appointment.client.full_name }}</h1>
+    <h1>{{ appointment.display_name }}</h1>
     <span class="badge badge-{{ appointment.status }}" style="font-size: 0.8125rem; padding: 0.25rem 0.75rem;">
       {{ appointment.get_status_display }}
     </span>
@@ -221,16 +221,16 @@
         <div class="info-item">
           <span class="info-label">Name</span>
           <span class="info-value">
-            {% if is_staff_or_admin %}
-            <a href="{% url 'clients:client_detail' pk=appointment.client.pk %}" class="link-primary">{{ appointment.client.full_name }}</a>
+            {% if is_staff_or_admin and appointment.client_id %}
+            <a href="{% url 'clients:client_detail' pk=appointment.client.pk %}" class="link-primary">{{ appointment.display_name }}</a>
             {% else %}
-            {{ appointment.client.full_name }}
+            {{ appointment.display_name }}{% if not appointment.client_id %} <span class="badge" style="background:#fef3c7; color:#92400e; font-size:0.7rem;">Trial / Walk-in</span>{% endif %}
             {% endif %}
           </span>
         </div>
         <div class="info-item">
           <span class="info-label">Mobile</span>
-          <span class="info-value">{{ appointment.client.mobile_number }}</span>
+          <span class="info-value">{{ appointment.display_mobile|default:"—" }}</span>
         </div>
         <div class="info-item">
           <span class="info-label">Total Sessions</span>

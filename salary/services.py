@@ -1,10 +1,10 @@
-from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Avg, Sum
 
-from salary.models import MonthlySalary, SalarySetting
+from salary.models import MonthlySalary, PerformanceRating, SalarySetting
 
 
 def first_of_month(d):
@@ -24,7 +24,7 @@ def previous_month(d):
 
 
 def working_days_in_month(d):
-    """All days in the month except Sunday (weekday == 6)."""
+    """All days in the month except Sunday (weekday == 6) — 6-day week."""
     start = first_of_month(d)
     end = next_month(start)
     count = 0
@@ -42,8 +42,11 @@ class SalaryService:
     Salary rules:
       - Base monthly salary = paid in full when 6-day week is fully attended
       - Per-day deduction × absent days (half-days = half this)
-      - Per-extra-session incentive × sessions exceeding the weekly target
-        (summed week-by-week within the month)
+      - Performance incentive = sum(rating star scores) × per-rating-point
+        (clients rate their assigned therapist each month).
+
+    Sundays are excluded from working_days, present_days, half_days, and
+    absent_days — they don't count anywhere.
     """
 
     @staticmethod
@@ -65,14 +68,13 @@ class SalaryService:
         deduction_per_day = (
             setting.deduction_per_absent_day if setting else Decimal('0')
         ) or Decimal('0')
-        weekly_target = (setting.sessions_target_per_week if setting else 0) or 0
-        per_extra_amount = (
-            setting.incentive_per_extra_session if setting else Decimal('0')
+        per_rating_point = (
+            setting.incentive_per_rating_point if setting else Decimal('0')
         ) or Decimal('0')
 
         total_working_days = working_days_in_month(month)
 
-        # ---- Attendance counts ----
+        # ---- Attendance counts (Sundays explicitly skipped) ----
         present_dates = set(
             AttendanceLog.active_objects
             .filter(user=employee, date__gte=month, date__lt=month_end)
@@ -91,42 +93,43 @@ class SalaryService:
         cur = month
         one = timedelta(days=1)
         while cur < month_end:
-            if cur.weekday() != 6:  # Sunday off
-                if cur in half_day_dates:
-                    half_days += 1
-                elif cur in leave_dates:
+            if cur.weekday() == 6:  # Sunday — skip entirely
+                cur += one
+                continue
+            if cur in half_day_dates:
+                half_days += 1
+            elif cur in leave_dates:
+                absent_days += 1
+            elif cur in present_dates:
+                present_days += 1
+            else:
+                if cur <= today:
                     absent_days += 1
-                elif cur in present_dates:
-                    present_days += 1
-                else:
-                    if cur <= today:
-                        absent_days += 1
             cur += one
 
-        # ---- Sessions per ISO week (so excess accumulates by week, not month) ----
-        session_dates = list(
+        # ---- Sessions completed this month (used for display only) ----
+        total_sessions = (
             Appointment.active_objects
             .filter(staff=employee, status=Appointment.Status.COMPLETED,
                     date__gte=month, date__lt=month_end)
-            .values_list('date', flat=True)
+            .count()
         )
-        per_week = defaultdict(int)
-        for d in session_dates:
-            iso_year, iso_week, _ = d.isocalendar()
-            per_week[(iso_year, iso_week)] += 1
-        total_sessions = sum(per_week.values())
 
-        if weekly_target > 0:
-            extra_sessions = sum(max(0, n - weekly_target) for n in per_week.values())
-        else:
-            extra_sessions = 0  # No target means no incentive payout
+        # ---- Performance ratings → incentive ----
+        ratings = PerformanceRating.active_objects.filter(
+            therapist=employee, month=month,
+        )
+        agg = ratings.aggregate(total_score=Sum('score'), avg=Avg('score'))
+        total_score = agg['total_score'] or 0
+        avg_rating = Decimal(str(round(agg['avg'] or 0, 2)))
+        total_ratings = ratings.count()
 
         # ---- Money ----
         deduction = (
             deduction_per_day * Decimal(absent_days)
             + (deduction_per_day / Decimal(2)) * Decimal(half_days)
         ).quantize(Decimal('0.01'))
-        incentive = (per_extra_amount * Decimal(extra_sessions)).quantize(Decimal('0.01'))
+        incentive = (per_rating_point * Decimal(total_score)).quantize(Decimal('0.01'))
         in_hand = (base - deduction + incentive).quantize(Decimal('0.01'))
         if in_hand < 0:
             in_hand = Decimal('0')
@@ -139,7 +142,8 @@ class SalaryService:
                 'half_days': half_days,
                 'absent_days': absent_days,
                 'total_sessions': total_sessions,
-                'extra_sessions': extra_sessions,
+                'total_ratings': total_ratings,
+                'avg_rating': avg_rating,
                 'base_monthly_salary': base,
                 'deduction': deduction,
                 'incentive': incentive,
@@ -168,3 +172,38 @@ class SalaryService:
         if employee:
             qs = qs.filter(employee=employee)
         return qs
+
+
+class RatingService:
+    """Operations on PerformanceRating."""
+
+    @staticmethod
+    @transaction.atomic
+    def upsert(client, therapist, target_date, score, feedback='', actor=None):
+        month = first_of_month(target_date)
+        rating, _ = PerformanceRating.objects.update_or_create(
+            client=client, therapist=therapist, month=month,
+            defaults={
+                'score': int(score),
+                'feedback': feedback or '',
+                'updated_by': actor,
+                'is_deleted': False,
+            },
+        )
+        # Refresh the salary snapshot so the new incentive flows immediately
+        SalaryService.compute(therapist, month, actor=actor)
+        return rating
+
+    @staticmethod
+    def for_therapist_month(therapist, target_date):
+        return (PerformanceRating.active_objects
+                .filter(therapist=therapist, month=first_of_month(target_date))
+                .select_related('client')
+                .order_by('-score', 'client__first_name'))
+
+    @staticmethod
+    def for_client_month(client, target_date):
+        return (PerformanceRating.active_objects
+                .filter(client=client, month=first_of_month(target_date))
+                .select_related('therapist')
+                .order_by('-score'))

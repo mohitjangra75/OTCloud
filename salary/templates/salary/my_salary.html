@@ -131,8 +131,8 @@
         <div class="val">{{ snap.total_sessions }}</div>
       </div>
       <div class="hero-tile">
-        <div class="lbl">Extra Sessions</div>
-        <div class="val">{{ snap.extra_sessions }}</div>
+        <div class="lbl">Avg Rating</div>
+        <div class="val">{% if snap.avg_rating %}{{ snap.avg_rating|floatformat:1 }}★{% else %}—{% endif %} <small style="opacity:0.7; font-size:0.65rem;">({{ snap.total_ratings }})</small></div>
       </div>
     </div>
   </div>
@@ -142,7 +142,7 @@
   <div class="head"><h3>Breakdown</h3></div>
   <div class="row"><span class="name">Base Salary</span><span class="val">₹{{ snap.base_monthly_salary|floatformat:0|intcomma }}</span></div>
   <div class="row sub"><span class="name">− Deduction ({{ snap.absent_days }} absent + {{ snap.half_days }} half-day)</span><span class="val">−₹{{ snap.deduction|floatformat:0|intcomma }}</span></div>
-  <div class="row add"><span class="name">+ Incentive ({{ snap.extra_sessions }} extra of {{ snap.total_sessions }} sessions)</span><span class="val">+₹{{ snap.incentive|floatformat:0|intcomma }}</span></div>
+  <div class="row add"><span class="name">+ Incentive ({{ snap.total_ratings }} ratings · {% if snap.avg_rating %}avg {{ snap.avg_rating|floatformat:1 }}★{% else %}no ratings yet{% endif %})</span><span class="val">+₹{{ snap.incentive|floatformat:0|intcomma }}</span></div>
   <div class="row total"><span class="name">In-Hand Salary</span><span class="val">₹{{ snap.in_hand_salary|floatformat:0|intcomma }}</span></div>
 </div>
 

@@ -116,7 +116,56 @@
           <span class="info-label">Address</span>
           <span class="info-value">{{ client.address|default:"Not provided"|linebreaksbr }}</span>
         </div>
+        <div class="info-item">
+          <span class="info-label">Assigned To</span>
+          <span class="info-value">
+            {% if client.assigned_therapist %}
+              {{ client.assigned_therapist.get_full_name|default:client.assigned_therapist.mobile_number }}
+            {% else %}
+              <span class="text-muted">Unassigned</span>
+            {% endif %}
+          </span>
+        </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Schedule Preference -->
+  <div class="card">
+    <div class="card-header"><h3>Schedule Preference</h3></div>
+    <div class="card-body">
+      {% if client.preferred_days_list or client.preferred_time_start or client.preferred_time_end %}
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Preferred Days</span>
+          <span class="info-value">
+            {% if client.preferred_days_list %}
+              {% for d in client.preferred_days_list %}
+                <span style="display:inline-block; padding:0.2rem 0.6rem; margin:0 0.25rem 0.25rem 0; background:#eef2ff; color:#4338ca; border-radius:999px; font-size:0.78rem; font-weight:700;">{{ d }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="text-muted">Any day</span>
+            {% endif %}
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Preferred Time</span>
+          <span class="info-value">
+            {% if client.preferred_time_start and client.preferred_time_end %}
+              {{ client.preferred_time_start|time:"h:i A" }} – {{ client.preferred_time_end|time:"h:i A" }}
+            {% elif client.preferred_time_start %}
+              From {{ client.preferred_time_start|time:"h:i A" }}
+            {% elif client.preferred_time_end %}
+              Until {{ client.preferred_time_end|time:"h:i A" }}
+            {% else %}
+              <span class="text-muted">Any time</span>
+            {% endif %}
+          </span>
+        </div>
+      </div>
+      {% else %}
+      <p class="text-muted">No schedule preference set.</p>
+      {% endif %}
     </div>
   </div>
 

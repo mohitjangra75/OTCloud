@@ -112,7 +112,7 @@
   <div class="list-card">
     <div class="list-head">
       <h3>Upcoming today</h3>
-      <a class="link" href="{% url 'appointments:daily_schedule' %}?date={{ today|date:'Y-m-d' }}">See schedule →</a>
+      <a class="link" href="{% url 'daily_schedule' %}?date={{ today|date:'Y-m-d' }}">See schedule →</a>
     </div>
     {% for a in upcoming_today %}
     <a class="list-item" href="{% url 'appointments:appointment_detail' pk=a.pk %}" style="text-decoration: none; color: inherit;">
@@ -154,7 +154,7 @@
 <!-- QUICK ACTIONS -->
 <div class="section-title">Shortcuts</div>
 <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
-  <a href="{% url 'appointments:daily_schedule' %}" class="btn btn-outline">Daily Schedule</a>
+  <a href="{% url 'daily_schedule' %}" class="btn btn-outline">Daily Schedule</a>
   <a href="{% url 'appointments:appointment_create' %}" class="btn btn-outline">+ Appointment</a>
   <a href="{% url 'attendance:team_day' %}" class="btn btn-outline">Team Attendance</a>
   <a href="{% url 'clients:client_list' %}" class="btn btn-outline">Clients</a>

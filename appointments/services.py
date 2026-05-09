@@ -49,6 +49,40 @@ class AppointmentService:
         return appointment
 
     @staticmethod
+    def detect_conflicts(staff, date_, start_time, end_time, exclude_pk=None):
+        """Return a dict of conflict reasons for (staff, date, time-range).
+
+        Keys (any subset, only present when applicable):
+            - 'overlap'  : list of overlapping appointments
+            - 'on_leave' : the AttendanceMark.LEAVE row (truthy)
+            - 'half_day' : the AttendanceMark.HALF_DAY row
+        """
+        from attendance.models import AttendanceMark
+        out = {}
+
+        qs = (Appointment.active_objects
+              .filter(staff=staff, date=date_)
+              .exclude(status=Appointment.Status.CANCELLED))
+        if exclude_pk:
+            qs = qs.exclude(pk=exclude_pk)
+        # Time overlap: A.start < B.end AND A.end > B.start
+        if start_time and end_time:
+            qs = qs.filter(start_time__lt=end_time, end_time__gt=start_time)
+        else:
+            qs = qs.filter(start_time=start_time)
+        overlaps = list(qs.select_related('client', 'therapy_type'))
+        if overlaps:
+            out['overlap'] = overlaps
+
+        mark = AttendanceMark.active_objects.filter(user=staff, date=date_).first()
+        if mark:
+            if mark.status == AttendanceMark.Status.LEAVE:
+                out['on_leave'] = mark
+            elif mark.status == AttendanceMark.Status.HALF_DAY:
+                out['half_day'] = mark
+        return out
+
+    @staticmethod
     def get_appointment(appointment_id):
         """Return a single appointment or raise AppointmentServiceError."""
         try:
@@ -154,8 +188,9 @@ class AppointmentService:
             appointment.updated_by = completed_by
         appointment.save()
 
-        # Auto-update billing & invoice
-        if appointment.therapy_type:
+        # Auto-update billing & invoice — only when there's a linked Client record
+        # (trial / walk-in appointments without a Client are skipped).
+        if appointment.therapy_type and appointment.client_id:
             from billing.services import BillingService, InvoiceService
             BillingService.tick_session(
                 client=appointment.client,
@@ -296,9 +331,9 @@ class AppointmentService:
 
     # ---- Daily schedule grid helpers ---------------------------------------
 
-    # Default time slots — 9:00 AM to 7:30 PM in 45-minute intervals.
+    # Default time slots — 9:00 AM to 6:00 PM in 45-minute intervals.
     DEFAULT_SLOT_START_MINUTES = 9 * 60       # 09:00
-    DEFAULT_SLOT_END_MINUTES = 20 * 60 + 15   # 20:15 (last slot starts 19:30)
+    DEFAULT_SLOT_END_MINUTES = 18 * 60        # 18:00 (last slot starts 17:15)
     DEFAULT_SLOT_DURATION = 45
 
     @staticmethod

@@ -10,7 +10,8 @@ urlpatterns = [
     path('<int:pk>/edit/', views.lead_update, name='lead_update'),
     path('<int:pk>/delete/', views.lead_delete, name='lead_delete'),
     path('<int:pk>/follow-up/', views.lead_add_follow_up, name='lead_add_follow_up'),
-    path('<int:pk>/convert/', views.lead_convert, name='lead_convert'),
+    path('<int:pk>/status/', views.lead_status_change, name='lead_status_change'),
+    path('<int:pk>/need-appointment/', views.lead_to_appointment, name='lead_to_appointment'),
     path('follow-ups/', views.follow_up_list, name='follow_up_list'),
     path('follow-ups/<int:pk>/complete/', views.follow_up_mark_completed, name='follow_up_mark_completed'),
 ]

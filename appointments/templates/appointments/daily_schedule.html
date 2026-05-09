@@ -309,7 +309,7 @@
     </p>
   </div>
   <div class="page-header-right" style="display:flex; gap:0.5rem;">
-    <a href="{% url 'appointments:employee_schedule' %}" class="btn btn-outline btn-sm">Employee View</a>
+    <a href="{% url 'employee_schedule' %}" class="btn btn-outline btn-sm">Employee View</a>
     <a href="{% url 'appointments:appointment_list' %}" class="btn btn-outline btn-sm">All Appointments</a>
   </div>
 </div>
@@ -366,7 +366,7 @@
       {% csrf_token %}
       <div class="rb-cell rb-time">{{ appt.start_time|time:"h:i A" }}</div>
       <div class="rb-cell rb-client">
-        <strong>{{ appt.client.full_name }}</strong>
+        <strong>{{ appt.display_name }}</strong>
         <span class="rb-meta">{% if appt.therapy_type %}{{ appt.therapy_type.name }}{% endif %}</span>
       </div>
       <div class="rb-cell rb-was">
@@ -414,7 +414,7 @@
             {% if cell %}
               <td>
                 <a class="sch-appt status-{{ cell.status }}{% if cell.needs_reassignment %} needs-reassign{% endif %}" href="{% url 'appointments:appointment_detail' pk=cell.pk %}" title="{% if cell.needs_reassignment %}Needs reassignment — {{ cell.reassignment_reason }}{% endif %}">
-                  <span class="name">{{ cell.client.full_name }}</span>
+                  <span class="name">{{ cell.display_name }}</span>
                   <span class="meta">
                     {% if cell.therapy_type %}{{ cell.therapy_type.name }}{% endif %}
                     {% if cell.is_group %} &middot; Group{% endif %}

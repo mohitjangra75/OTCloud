@@ -126,7 +126,7 @@ CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
 # OTCloud Settings
 OFFICE_START_TIME = '10:00'
-OFFICE_END_TIME = '19:00'
+OFFICE_END_TIME = '18:00'
 APPOINTMENT_CANCEL_HOURS = 6
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

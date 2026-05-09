@@ -23,7 +23,7 @@ def _staff_required(view_func):
 @login_required
 @_staff_required
 def lead_list(request):
-    queryset = Lead.active_objects.select_related('assigned_to').all()
+    queryset = Lead.active_objects.all()
 
     status_filter = request.GET.get('status')
     if status_filter:
@@ -76,7 +76,7 @@ def lead_create(request):
 def lead_detail(request, pk):
     from django.utils import timezone
     lead = get_object_or_404(
-        Lead.active_objects.select_related('assigned_to', 'converted_client'),
+        Lead.active_objects.select_related('converted_client'),
         pk=pk,
     )
     follow_ups = lead.follow_ups.filter(is_deleted=False).order_by('-follow_up_date')
@@ -89,6 +89,35 @@ def lead_detail(request, pk):
     next_pending = follow_ups.filter(status='pending').order_by('follow_up_date').first()
     age_days = (timezone.now().date() - lead.created_at.date()).days
 
+    # Split follow-ups into upcoming/overdue (pending) and done (completed/missed),
+    # tagging each with an urgency label for nicer per-row styling.
+    today = timezone.now().date()
+    upcoming, done = [], []
+    for fu in follow_ups:
+        delta = (fu.follow_up_date.date() - today).days
+        if fu.status == 'pending':
+            if delta < 0:
+                urgency = 'overdue'; rel = f"Overdue {-delta}d"
+            elif delta == 0:
+                urgency = 'today'; rel = "Today"
+            elif delta == 1:
+                urgency = 'tomorrow'; rel = "Tomorrow"
+            elif delta <= 7:
+                urgency = 'soon'; rel = f"In {delta}d"
+            else:
+                urgency = 'future'; rel = f"In {delta}d"
+            upcoming.append({'fu': fu, 'urgency': urgency, 'rel': rel})
+        else:
+            if delta < 0:
+                rel = f"{-delta}d ago"
+            elif delta == 0:
+                rel = "Today"
+            else:
+                rel = fu.follow_up_date.strftime('%d %b')
+            done.append({'fu': fu, 'urgency': fu.status, 'rel': rel})
+    upcoming.sort(key=lambda x: x['fu'].follow_up_date)
+    done.sort(key=lambda x: x['fu'].follow_up_date, reverse=True)
+
     journey_stages = ['new', 'contacted', 'interested', 'converted']
     if lead.status == 'lost':
         current_idx = -1  # special branch
@@ -100,6 +129,8 @@ def lead_detail(request, pk):
     return render(request, 'lms/lead_detail.html', {
         'lead': lead,
         'follow_ups': follow_ups,
+        'upcoming_follow_ups': upcoming,
+        'done_follow_ups': done,
         'follow_up_form': follow_up_form,
         'pending_count': pending_count,
         'completed_count': completed_count,
@@ -173,20 +204,41 @@ def lead_add_follow_up(request, pk):
 
 @login_required
 @_staff_required
-def lead_convert(request, pk):
+def lead_status_change(request, pk):
+    """Inline status change from the leads list — POST-only."""
     lead = get_object_or_404(Lead.active_objects, pk=pk)
+    if request.method != 'POST':
+        return redirect('lms:lead_list')
 
-    if request.method == 'POST':
-        try:
-            client = LeadService.convert_to_client(lead.pk, converted_by=request.user)
-            messages.success(
-                request,
-                f'Lead "{lead.name}" converted to client "{client.full_name}".',
-            )
-        except ValueError as e:
-            messages.error(request, str(e))
+    new_status = (request.POST.get('status') or '').strip()
+    try:
+        LeadService.update_status(lead.pk, new_status, actor=request.user)
+        messages.success(request, f'{lead.name} → {dict(Lead.Status.choices).get(new_status, new_status)}.')
+    except (ValueError, Lead.DoesNotExist) as e:
+        messages.error(request, str(e))
 
-    return redirect('lms:lead_detail', pk=lead.pk)
+    redirect_to = request.POST.get('next') or 'lms:lead_list'
+    if redirect_to.startswith('/'):
+        from django.utils.http import url_has_allowed_host_and_scheme
+        if url_has_allowed_host_and_scheme(redirect_to, allowed_hosts={request.get_host()}):
+            return redirect(redirect_to)
+    return redirect('lms:lead_list')
+
+
+@login_required
+@_staff_required
+def lead_to_appointment(request, pk):
+    """Send the user to the appointment-create form, prefilled from the lead."""
+    lead = get_object_or_404(Lead.active_objects, pk=pk)
+    # Carry the lead's name + mobile + lead_id so the appointment view can pre-fill,
+    # and so we can mark the lead as CONVERTED once the appointment is saved.
+    from urllib.parse import urlencode
+    qs = urlencode({
+        'lead_id': lead.pk,
+        'client_name': lead.name,
+        'client_mobile': lead.mobile,
+    })
+    return redirect(f"/appointments/create/?{qs}")
 
 
 @login_required

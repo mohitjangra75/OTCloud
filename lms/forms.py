@@ -1,15 +1,12 @@
 from django import forms
-from django.contrib.auth import get_user_model
 
 from lms.models import Lead, FollowUp
-
-User = get_user_model()
 
 
 class LeadForm(forms.ModelForm):
     class Meta:
         model = Lead
-        fields = ['name', 'mobile', 'email', 'source', 'status', 'assigned_to', 'notes']
+        fields = ['name', 'mobile', 'email', 'source', 'status', 'notes']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'form-input',
@@ -25,20 +22,11 @@ class LeadForm(forms.ModelForm):
             }),
             'source': forms.Select(attrs={'class': 'form-select'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
-            'assigned_to': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={
                 'class': 'form-textarea',
                 'rows': 3,
             }),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['assigned_to'].queryset = User.objects.filter(
-            role__in=[User.Role.ADMIN, User.Role.STAFF],
-            is_active=True,
-        )
-        self.fields['assigned_to'].required = False
 
 
 class FollowUpForm(forms.ModelForm):

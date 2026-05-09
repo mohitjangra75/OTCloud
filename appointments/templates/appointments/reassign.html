@@ -47,7 +47,7 @@
       </svg>
     </div>
     <div class="appt-summary-info">
-      <div class="appt-summary-title">{{ appointment.client.full_name }}</div>
+      <div class="appt-summary-title">{{ appointment.display_name }}</div>
       <div class="appt-summary-meta">
         {{ appointment.date|date:"l, d M Y" }} &middot; {{ appointment.start_time|time:"h:i A" }} - {{ appointment.end_time|time:"h:i A" }}
       </div>

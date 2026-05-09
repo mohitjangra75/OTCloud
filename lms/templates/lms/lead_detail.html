@@ -129,35 +129,99 @@
     white-space: pre-wrap;
   }
 
-  /* Follow-ups timeline */
-  .timeline { padding: 1rem; }
-  .tl-item {
-    position: relative; padding: 0 0 1rem 1.75rem;
-    border-left: 2px solid #e5e7eb; margin-left: 0.4rem;
-  }
-  .tl-item:last-child { border-left-color: transparent; padding-bottom: 0; }
-  .tl-item::before {
-    content: ""; position: absolute; left: -7px; top: 4px;
-    width: 12px; height: 12px; border-radius: 50%; background: #94a3b8;
-    border: 2px solid #fff; box-shadow: 0 0 0 1px #e5e7eb;
-  }
-  .tl-item.pending::before { background: #f59e0b; box-shadow: 0 0 0 1px #fbbf24; }
-  .tl-item.completed::before { background: #16a34a; box-shadow: 0 0 0 1px #4ade80; }
-  .tl-item.missed::before { background: #ef4444; box-shadow: 0 0 0 1px #f87171; }
-  .tl-head {
+  /* Follow-ups — section sub-header */
+  .fu-section-head {
+    padding: 0.6rem 1rem; background: #f8fafc;
+    border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;
     display: flex; justify-content: space-between; align-items: center;
-    flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.3rem;
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: #64748b; font-weight: 800;
   }
-  .tl-when { font-weight: 700; color: #0f172a; font-size: 0.92rem; }
-  .tl-pill {
-    display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
-    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  .fu-section-head.upcoming { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+  .fu-section-head.done { background: #f0fdf4; color: #14532d; border-color: #bbf7d0; }
+  .fu-section-head .count {
+    background: rgba(0,0,0,0.05); color: inherit;
+    padding: 0.1rem 0.5rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.02em;
   }
-  .tl-pill.pending { background: #fef3c7; color: #854d0e; }
-  .tl-pill.completed { background: #dcfce7; color: #15803d; }
-  .tl-pill.missed { background: #fee2e2; color: #b91c1c; }
-  .tl-notes { color: #475569; font-size: 0.88rem; line-height: 1.5; }
-  .tl-actions { margin-top: 0.4rem; }
+  .fu-list { padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+
+  /* Follow-up row card */
+  .fu-row {
+    display: flex; gap: 0.85rem; align-items: stretch;
+    background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 10px; padding: 0.75rem 0.85rem;
+    transition: all .15s;
+  }
+  .fu-row:hover { border-color: #cbd5e1; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+
+  .fu-date {
+    width: 64px; flex-shrink: 0;
+    border-radius: 8px; overflow: hidden;
+    text-align: center; line-height: 1;
+    border: 1px solid #e5e7eb;
+    display: flex; flex-direction: column;
+  }
+  .fu-date .mon {
+    background: #f1f5f9; color: #475569;
+    font-size: 0.62rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 0.2rem 0;
+  }
+  .fu-date .day {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; font-weight: 800; color: #0f172a;
+    padding: 0.3rem 0; font-variant-numeric: tabular-nums;
+  }
+  .fu-date .time {
+    background: #f8fafc; color: #475569;
+    font-size: 0.7rem; font-weight: 700;
+    padding: 0.18rem 0; border-top: 1px solid #f1f5f9;
+  }
+
+  .fu-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+  .fu-head-row {
+    display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;
+  }
+  .fu-rel-pill {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    padding: 0.18rem 0.55rem; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 800; letter-spacing: 0.02em;
+  }
+  .fu-rel-pill.overdue  { background: #fee2e2; color: #b91c1c; }
+  .fu-rel-pill.today    { background: #fef3c7; color: #92400e; }
+  .fu-rel-pill.tomorrow { background: #ffedd5; color: #c2410c; }
+  .fu-rel-pill.soon     { background: #dbeafe; color: #1d4ed8; }
+  .fu-rel-pill.future   { background: #f1f5f9; color: #475569; }
+  .fu-rel-pill.completed{ background: #dcfce7; color: #15803d; }
+  .fu-rel-pill.missed   { background: #fee2e2; color: #b91c1c; }
+
+  .fu-notes { color: #475569; font-size: 0.88rem; line-height: 1.45; }
+  .fu-notes.empty { color: #94a3b8; font-style: italic; }
+
+  .fu-actions { display: flex; gap: 0.4rem; align-items: center; flex-shrink: 0; }
+  .fu-mark-btn {
+    background: #16a34a; color: #fff; border: none;
+    padding: 0.4rem 0.75rem; border-radius: 7px;
+    font-size: 0.78rem; font-weight: 700; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 0.3rem;
+  }
+  .fu-mark-btn:hover { background: #15803d; }
+
+  /* Status accent on the card by urgency */
+  .fu-row.overdue  { border-left: 3px solid #ef4444; }
+  .fu-row.today    { border-left: 3px solid #f59e0b; }
+  .fu-row.tomorrow { border-left: 3px solid #fb923c; }
+  .fu-row.soon     { border-left: 3px solid #6366f1; }
+  .fu-row.completed{ border-left: 3px solid #16a34a; }
+  .fu-row.missed   { border-left: 3px solid #ef4444; opacity: 0.75; }
+
+  @media (max-width: 600px) {
+    .fu-row { flex-direction: column; gap: 0.6rem; }
+    .fu-date { flex-direction: row; width: 100%; }
+    .fu-date .mon, .fu-date .day, .fu-date .time { flex: 1; }
+    .fu-date .day { padding: 0.5rem 0; font-size: 1.1rem; }
+  }
 
   /* Add follow-up form */
   .add-follow-up {
@@ -208,18 +272,11 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 22s-8-7.58-8-13a8 8 0 0 1 16 0c0 5.42-8 13-8 13z"/></svg>
           {{ lead.get_source_display }}
         </span>
-        <span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          {{ lead.assigned_to.get_full_name|default:lead.assigned_to.mobile_number|default:"Unassigned" }}
-        </span>
       </div>
     </div>
     <div class="actions">
-      {% if lead.status != 'converted' and lead.status != 'lost' %}
-      <form method="post" action="{% url 'lms:lead_convert' pk=lead.pk %}" style="display:inline;">
-        {% csrf_token %}
-        <button type="submit" class="btn-light" style="cursor:pointer;">→ Convert to Client</button>
-      </form>
+      {% if lead.status != 'lost' %}
+      <a href="{% url 'lms:lead_to_appointment' pk=lead.pk %}" class="btn-light">📅 Need Appointment</a>
       {% endif %}
       <a href="{% url 'lms:lead_update' pk=lead.pk %}" class="btn-light">Edit</a>
       <a href="{% url 'lms:lead_delete' pk=lead.pk %}" class="btn-light danger">Delete</a>
@@ -266,7 +323,6 @@
       <div class="info-row"><span class="k">Mobile</span><span class="v"><a href="tel:{{ lead.mobile }}">{{ lead.mobile }}</a></span></div>
       <div class="info-row"><span class="k">Email</span><span class="v">{% if lead.email %}<a href="mailto:{{ lead.email }}">{{ lead.email }}</a>{% else %}<span style="color:#94a3b8;">—</span>{% endif %}</span></div>
       <div class="info-row"><span class="k">Source</span><span class="v">{{ lead.get_source_display }}</span></div>
-      <div class="info-row"><span class="k">Assigned To</span><span class="v">{{ lead.assigned_to.get_full_name|default:lead.assigned_to.mobile_number|default:"Unassigned" }}</span></div>
       <div class="info-row"><span class="k">Last Updated</span><span class="v">{{ lead.updated_at|date:"d M Y, H:i" }}</span></div>
       {% if next_pending %}
       <div class="info-row"><span class="k">Next Action</span><span class="v" style="color:#b45309;">{{ next_pending.follow_up_date|date:"d M Y, H:i" }}</span></div>
@@ -295,29 +351,69 @@
     <h3>Follow-ups</h3>
     <span class="meta">{{ pending_count }} pending • {{ completed_count }} completed • {{ missed_count }} missed</span>
   </div>
-  {% if follow_ups %}
-  <div class="timeline">
-    {% for fu in follow_ups %}
-    <div class="tl-item {{ fu.status }}">
-      <div class="tl-head">
-        <span class="tl-when">{{ fu.follow_up_date|date:"d M Y, H:i" }}</span>
-        <span class="tl-pill {{ fu.status }}">{{ fu.get_status_display }}</span>
+
+  {% if not upcoming_follow_ups and not done_follow_ups %}
+  <div style="padding: 2rem 1rem; text-align:center; color:#94a3b8;">
+    No follow-ups yet. Schedule one below to start a conversation thread.
+  </div>
+  {% endif %}
+
+  {% if upcoming_follow_ups %}
+  <div class="fu-section-head upcoming">
+    <span>📅 Upcoming</span>
+    <span class="count">{{ upcoming_follow_ups|length }}</span>
+  </div>
+  <div class="fu-list">
+    {% for item in upcoming_follow_ups %}
+    <div class="fu-row {{ item.urgency }}">
+      <div class="fu-date">
+        <div class="mon">{{ item.fu.follow_up_date|date:"M" }}</div>
+        <div class="day">{{ item.fu.follow_up_date|date:"d" }}</div>
+        <div class="time">{{ item.fu.follow_up_date|date:"h:i a" }}</div>
       </div>
-      <div class="tl-notes">{{ fu.notes|default:"No notes."|linebreaksbr }}</div>
-      {% if fu.status == 'pending' %}
-      <div class="tl-actions">
-        <form method="post" action="{% url 'lms:follow_up_mark_completed' pk=fu.pk %}" style="display:inline;">
+      <div class="fu-body">
+        <div class="fu-head-row">
+          <span class="fu-rel-pill {{ item.urgency }}">{{ item.rel }}</span>
+          <span style="color:#94a3b8; font-size:0.8rem;">{{ item.fu.follow_up_date|date:"D, d M Y" }}</span>
+        </div>
+        <div class="fu-notes {% if not item.fu.notes %}empty{% endif %}">{{ item.fu.notes|default:"No notes."|linebreaksbr }}</div>
+      </div>
+      <div class="fu-actions">
+        <form method="post" action="{% url 'lms:follow_up_mark_completed' pk=item.fu.pk %}">
           {% csrf_token %}
-          <button type="submit" class="btn btn-sm btn-success" style="padding:0.3rem 0.7rem; font-size:0.78rem;">✓ Mark Complete</button>
+          <button type="submit" class="fu-mark-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Mark Done
+          </button>
         </form>
       </div>
-      {% endif %}
     </div>
     {% endfor %}
   </div>
-  {% else %}
-  <div style="padding: 2rem 1rem; text-align:center; color:#94a3b8;">
-    No follow-ups yet. Schedule one below to start a conversation thread.
+  {% endif %}
+
+  {% if done_follow_ups %}
+  <div class="fu-section-head done">
+    <span>✓ History</span>
+    <span class="count">{{ done_follow_ups|length }}</span>
+  </div>
+  <div class="fu-list">
+    {% for item in done_follow_ups %}
+    <div class="fu-row {{ item.urgency }}">
+      <div class="fu-date">
+        <div class="mon">{{ item.fu.follow_up_date|date:"M" }}</div>
+        <div class="day">{{ item.fu.follow_up_date|date:"d" }}</div>
+        <div class="time">{{ item.fu.follow_up_date|date:"h:i a" }}</div>
+      </div>
+      <div class="fu-body">
+        <div class="fu-head-row">
+          <span class="fu-rel-pill {{ item.urgency }}">{{ item.fu.get_status_display }}</span>
+          <span style="color:#94a3b8; font-size:0.8rem;">{{ item.rel }} • {{ item.fu.follow_up_date|date:"D, d M Y" }}</span>
+        </div>
+        <div class="fu-notes {% if not item.fu.notes %}empty{% endif %}">{{ item.fu.notes|default:"No notes."|linebreaksbr }}</div>
+      </div>
+    </div>
+    {% endfor %}
   </div>
   {% endif %}
 

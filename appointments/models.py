@@ -38,6 +38,16 @@ class Appointment(CoreModel):
         'clients.Client',
         on_delete=models.CASCADE,
         related_name='appointments',
+        null=True, blank=True,
+        help_text='Linked client record. Optional — for trials, fill client_name instead.',
+    )
+    client_name = models.CharField(
+        max_length=120, blank=True,
+        help_text='Free-form name when no Client record exists yet (e.g. "Trial - Aanya Sharma").',
+    )
+    client_mobile = models.CharField(
+        max_length=15, blank=True,
+        help_text='Optional mobile for trial / non-client appointments.',
     )
     staff = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -80,15 +90,36 @@ class Appointment(CoreModel):
 
     def __str__(self):
         therapy = f" - {self.therapy_type.name}" if self.therapy_type else ""
-        return f"{self.client} - {self.date}{therapy}"
+        return f"{self.display_name} - {self.date}{therapy}"
+
+    @property
+    def display_name(self):
+        """Best name to show — linked client wins, else client_name, else 'Trial'."""
+        if self.client_id:
+            return self.client.full_name if self.client else 'Client'
+        return self.client_name or 'Trial'
+
+    @property
+    def display_mobile(self):
+        if self.client_id and self.client:
+            return self.client.mobile_number
+        return self.client_mobile or ''
 
     def calculate_price(self):
-        """Calculate session price from therapy type."""
+        """Calculate session price from therapy type. Trials are always ₹0."""
+        # Trial / walk-in sessions (no linked Client record) are free.
+        if not self.client_id:
+            self.session_price = 0
+            return self.session_price
         if self.therapy_type:
             self.session_price = self.therapy_type.price
         return self.session_price
 
     def save(self, *args, **kwargs):
-        if self.therapy_type and not self.session_price:
+        # Always re-evaluate trial pricing on save so a trial → client switch
+        # (or vice-versa) doesn't keep stale numbers around.
+        if not self.client_id:
+            self.session_price = 0
+        elif self.therapy_type and not self.session_price:
             self.calculate_price()
         super().save(*args, **kwargs)
